@@ -37,6 +37,33 @@ public class ShortUrlResolverServiceTests
     }
 
     [Fact]
+    public async Task ResolveAsync_WhenCacheHit_ReturnsResolvedWithoutQueryingRepository()
+    {
+        // Arrange -- the entire point of a read-through cache: a hit must skip the
+        // repository/DB round trip entirely, and must not re-write what it just read
+        // back into the cache. Every other test in this class configures the cache to
+        // miss (matching the MVP's NullShortUrlCache), so this is the only test that
+        // exercises the cache-hit branch of ResolveAsync at all.
+        var shortUrl = new ShortUrl { Code = "hit1234", OriginalUrl = "https://example.com/cached" };
+
+        var mockCache = new Mock<IShortUrlCache>();
+        mockCache.Setup(c => c.GetAsync("hit1234", It.IsAny<CancellationToken>())).ReturnsAsync(shortUrl);
+
+        var mockRepository = new Mock<IShortUrlRepository>();
+
+        var service = new ShortUrlResolverService(mockRepository.Object, mockCache.Object, NullLogger<ShortUrlResolverService>.Instance);
+
+        // Act
+        var result = await service.ResolveAsync("hit1234", CancellationToken.None);
+
+        // Assert
+        Assert.Equal(ShortUrlResolutionStatus.Resolved, result.Status);
+        Assert.Equal("https://example.com/cached", result.OriginalUrl);
+        mockRepository.Verify(r => r.GetByCodeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockCache.Verify(c => c.SetAsync(It.IsAny<ShortUrl>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ResolveAsync_WithUnknownCode_ReturnsNotFound()
     {
         // Arrange

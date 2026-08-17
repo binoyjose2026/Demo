@@ -40,7 +40,7 @@ Client brief → formal requirements → gap-analysis → answers:
 
 - [Design folder overview](02-design/readme.txt) — how v1/v2/v3-mvp relate.
 - [v1 — baseline architecture](02-design/v1/design/) — a complete, reasonably scoped design for the core functions (create, fetch, analytics) and standard non-functional concerns (security, scalability, performance, resilience, reliability/availability, testing). See the [full link list](00-getting-started/01-start/readme.md#v1-design-the-baseline-architecture).
-- [v2 — extreme-scale exploration](02-design/v2/design/considerations/) (~28 documents) — a hypothetical "what would this require at extreme scale" review. Reference architecture only, **not what was built**. Best read via the [browsable client site](../client-deliverables/website/index.html).
+- [v2 — extreme-scale exploration](02-design/v2/design/considerations/) (~28 documents) — a hypothetical "what would this require at extreme scale" review. Reference architecture only, **not what was built**. Best read via the [browsable client site](00-getting-started/01-start/index.html).
 - [v3-mvp — the actual shipped design](02-design/v3-mvp/design/) — what was really built:
   - [API design (the two shipped endpoints)](02-design/v3-mvp/design/api-design.md)
   - [Database design](02-design/v3-mvp/design/db-design.md)

@@ -12,10 +12,10 @@ If you're opening this project cold, start here:
   full index: project intent, requirements, design docs, and the working code,
   all in one place.
 - **[Documentation index](documentation/readme.md)** — a shorter, top-level map of the `documentation/` tree, linking out to each phase.
-- **[Engineering approach](client-deliverables/approach/developer-approach.html)** —
+- **[Engineering approach](documentation/00-getting-started/01-start/developer-approach.html)** —
   a short, readable explanation of why most of the time went into design and
   the shipped code is a deliberately minimal MVP.
-- **[v2 scalability design review](client-deliverables/website/index.html)** —
+- **[v2 scalability design review](documentation/00-getting-started/01-start/index.html)** —
   a browsable site walking through ~30 documents on what this system would
   need if it had to handle extreme scale. See the note below before reading
   this as "the design" — it isn't what was built.
@@ -48,7 +48,7 @@ See that folder's own `README.md` for how to run it locally.
 
 ```
 documentation/          Requirements and design docs (v0 -> v1 -> v2 -> v3), numbered by phase
-client-deliverables/    Client-facing HTML pages (engineering approach, v2 review site)
+documentation/00-getting-started/01-start/  (also holds the two client-facing HTML pages: engineering approach, v2 review site)
 engineering-standards/  Cross-cutting coding/design/data guidelines followed throughout
 src/                    The working .NET solution (the actual shipped MVP)
 ```
@@ -59,7 +59,7 @@ Beyond the code and the design trail itself, a few notes on the thinking behind
 how this project was structured and delivered, offered in the spirit of full
 disclosure rather than as a sales pitch.
 
-**On simplicity versus over-engineering.** The [v2 "extreme scale" review](client-deliverables/website/index.html)
+**On simplicity versus over-engineering.** The [v2 "extreme scale" review](documentation/00-getting-started/01-start/index.html)
 deliberately explores the opposite extreme from v1's simplicity — but it's worth
 pointing out that several of its own conclusions demonstrate restraint, not just
 exploration for its own sake. Two of the largest, most "enterprise" pieces of

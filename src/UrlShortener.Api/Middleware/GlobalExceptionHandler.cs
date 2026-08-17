@@ -75,14 +75,10 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
             ? correlationIdValue as string
             : null;
 
-        var problemDetails = new ProblemDetails
-        {
-            Status = statusCode,
-            Title = title,
-            Detail = detail,
-            Instance = httpContext.Request.Path,
-        };
-
+        // The ValidationAppException branch below builds its own ValidationProblemDetails
+        // (Errors dictionary, no Detail) rather than this generic ProblemDetails shape, so
+        // this is only constructed -- and only pays the allocation -- for the non-validation
+        // (500-class) path.
         if (exception is ValidationAppException { FieldName: { } fieldName })
         {
             var validationProblem = new ValidationProblemDetails(
@@ -105,6 +101,14 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
                 cancellationToken: cancellationToken);
             return true;
         }
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Instance = httpContext.Request.Path,
+        };
 
         if (correlationId is not null)
         {

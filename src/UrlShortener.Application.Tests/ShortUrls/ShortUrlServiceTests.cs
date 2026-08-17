@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -194,5 +195,72 @@ public class ShortUrlServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ShortCodeGenerationException>(() => service.CreateAsync(request, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenEventPublisherFails_StillReturnsResponseAndLogsWarning()
+    {
+        // Arrange -- Item 4's fire-and-forget contract: a publish failure must never
+        // surface to the caller of CreateAsync (the short URL is already durably
+        // committed), it must only be logged. No existing test exercised this catch
+        // block at all.
+        var mockRepository = new Mock<IRepository<ShortUrl>>();
+        var mockUnitOfWork = new Mock<IUnitOfWork>();
+        mockUnitOfWork.Setup(u => u.Repository<ShortUrl>()).Returns(mockRepository.Object);
+
+        var mockShortUrlRepository = new Mock<IShortUrlRepository>();
+        mockShortUrlRepository.Setup(r => r.ExistsByCodeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var mockCodeGenerator = new Mock<IShortCodeGenerator>();
+        mockCodeGenerator.Setup(g => g.GenerateCandidate()).Returns("failpub1");
+
+        var mockEventPublisher = new Mock<IShortUrlEventPublisher>();
+        mockEventPublisher
+            .Setup(p => p.PublishUrlCreatedAsync(It.IsAny<ShortUrl>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("simulated publish failure"));
+
+        var warningTrackingLogger = new WarningTrackingLogger();
+        var options = Options.Create(new ShortUrlOptions { BaseUrl = "https://short.ly" });
+
+        var service = new ShortUrlService(
+            mockUnitOfWork.Object,
+            mockShortUrlRepository.Object,
+            mockCodeGenerator.Object,
+            mockEventPublisher.Object,
+            options,
+            warningTrackingLogger);
+
+        var request = new CreateShortUrlRequest { OriginalUrl = "https://example.com/publish-failure" };
+
+        // Act -- awaiting a Moq ThrowsAsync task resumes synchronously (it is already
+        // completed), so PublishUrlCreatedEventSafelyAsync's catch block has already run
+        // by the time CreateAsync returns control here -- no extra synchronization needed.
+        var result = await service.CreateAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("failpub1", result.Code);
+        Assert.True(warningTrackingLogger.WarningLogged, "Expected a Warning-level log for the failed publish attempt.");
+    }
+
+    /// <summary>
+    /// Minimal <see cref="ILogger{TCategoryName}"/> test double that records whether a
+    /// Warning-level log was written, without Moq's finicky generic-method verification
+    /// syntax for <see cref="ILogger.Log"/>.
+    /// </summary>
+    private sealed class WarningTrackingLogger : ILogger<ShortUrlService>
+    {
+        public bool WarningLogged { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning)
+            {
+                WarningLogged = true;
+            }
+        }
     }
 }

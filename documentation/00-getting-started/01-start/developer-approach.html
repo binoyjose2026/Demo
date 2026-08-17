@@ -333,7 +333,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
 
 <div class="topbar">
   <div class="topbar-inner">
-    <a class="nav-toplink" href="../website/index.html">&larr; v2 Scalability Design Review</a>
+    <a class="nav-toplink" href="index.html">&larr; v2 Scalability Design Review</a>
   </div>
 </div>
 
@@ -361,7 +361,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
 <p>With scope locked, the v1 design pass worked out a full architecture for a working system: a layered solution structure, the repository pattern, SQLite plus EF Core as the embedded datastore, and SOLID-principle-driven design throughout. That design covered security, scalability, performance, resilience, reliability and availability, unit testing, and integration testing — plus the three core functional flows the product actually needs: create, fetch, and analytics. This is the architecture a straightforward, correctly-built v1 service would follow.</p>
 
 <h3>v2 design — "what would extreme scale actually require"</h3>
-<p>The third stage asked a different, deliberately broader question: not "what does v1 need," but <strong>what would this system have to become if it actually had to handle real growth</strong> — millions of creates a day scaling toward tens of millions, tens of millions of fetches a day scaling toward hundreds of millions, over a five-year horizon. That review produced <strong>29 documents</strong> spanning data partitioning, Elasticsearch versus alternatives for analytics storage, caching and CDN strategy, messaging, the full resilience-pattern family (timeout, retry, backoff, jitter, circuit breaker, bulkhead), security at scale, Kubernetes-based infrastructure, and forward-looking AI-pluggability. The full write-up, with the numbers and verdicts behind each decision, is at <a href="../website/index.html">the v2 Scalability Design Review</a>.</p>
+<p>The third stage asked a different, deliberately broader question: not "what does v1 need," but <strong>what would this system have to become if it actually had to handle real growth</strong> — millions of creates a day scaling toward tens of millions, tens of millions of fetches a day scaling toward hundreds of millions, over a five-year horizon. That review produced <strong>29 documents</strong> spanning data partitioning, Elasticsearch versus alternatives for analytics storage, caching and CDN strategy, messaging, the full resilience-pattern family (timeout, retry, backoff, jitter, circuit breaker, bulkhead), security at scale, Kubernetes-based infrastructure, and forward-looking AI-pluggability. The full write-up, with the numbers and verdicts behind each decision, is at <a href="index.html">the v2 Scalability Design Review</a>.</p>
 </section>
 
 <section id="nuance">

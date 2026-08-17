@@ -17,8 +17,8 @@ Client provided basic requirements. Instead of iterating through clarification c
 ## Important Links
 
 ### Start here
-- [Engineering approach — why design got most of the time, and MVP shipped minimal](../../../client-deliverables/approach/developer-approach.html)
-- [v2 extreme-scale design review (28 documents, browsable site)](../../../client-deliverables/website/index.html)
+- [Engineering approach — why design got most of the time, and MVP shipped minimal](developer-approach.html)
+- [v2 extreme-scale design review (28 documents, browsable site)](index.html)
 
 ### Global guidelines
 - [Coding guidelines (C#/.NET)](../../../engineering-standards/guidelines/coding-guidelines.md)
@@ -43,7 +43,7 @@ Client provided basic requirements. Instead of iterating through clarification c
 - [Create flow](../../02-design/v1/design/fn-create.md) · [Fetch/redirect flow](../../02-design/v1/design/fn-fetch.md) · [Analytics flow](../../02-design/v1/design/fn-analytics.md)
 
 ### v2 design — "what would extreme scale require" (28 documents)
-Best read via the [browsable site](../../../client-deliverables/website/index.html) (key-decisions summary + full detail per topic); raw source lives in [`../../02-design/v2/design/considerations/`](../../02-design/v2/design/considerations/).
+Best read via the [browsable site](index.html) (key-decisions summary + full detail per topic); raw source lives in [`../../02-design/v2/design/considerations/`](../../02-design/v2/design/considerations/).
 
 ### v3 MVP — what was actually built and shipped
 - [Database design](../../02-design/v3-mvp/design/db-design.md)
