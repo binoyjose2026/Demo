@@ -13,7 +13,7 @@
 
 At v2 scale, the dependency graph is no longer "one embedded database plus one HTTP call." It is:
 
-- **Primary database** (per `03-elasticsearch-vs-sql-server.md` / `05-kafka-comaporios.md`'s surrounding architecture — a server-based RDBMS, not SQLite)
+- **Primary database** (per `03-elasticsearch-vs-sql-server.md` / `05-kafka-comparison.md`'s surrounding architecture — a server-based RDBMS, not SQLite)
 - **Redis cache** (`07-redis-caching-and-invalidation.md`)
 - **Elasticsearch** (`03-elasticsearch-vs-sql-server.md`, `04-elasticsearch-vs-mongodb.md`)
 - **Message broker** (`05-kafka-comparison.md`, `20-outbox-pattern.md`)

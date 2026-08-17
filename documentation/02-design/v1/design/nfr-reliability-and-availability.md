@@ -25,7 +25,7 @@
 
 Per the in-scope decision at Q7, the original long URL behind a short code is **immutable after creation** — there is no edit/update API for the `OriginalUrl` field. This is not just a product rule; it is the mechanism that makes ANFR-02 true by construction rather than by runtime discipline:
 
-- If the mapping `ShortCode → OriginalUrl` can never change once written, then "consistently resolves to the same URL" is guaranteed the moment the row is durably committed — there is no code path that could produce drift, no race between a concurrent edit and a concurrent redirect, and no need for read-time reconciliation logic.
+- If the mapping `Code → OriginalUrl` can never change once written, then "consistently resolves to the same URL" is guaranteed the moment the row is durably committed — there is no code path that could produce drift, no race between a concurrent edit and a concurrent redirect, and no need for read-time reconciliation logic.
 - The `Application` layer exposes no `UpdateOriginalUrlAsync`/`PATCH` operation on `ShortUrl` for the `OriginalUrl` property. The only writes permitted after creation are **lifecycle** writes (deactivation, expiry) which change *availability* of the mapping, never its *target*.
 
 ```csharp

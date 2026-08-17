@@ -19,7 +19,7 @@ At today's volume, 1M creates/day averages ~12 creates/sec, and 10M fetches/day 
 
 **This is explicitly not a claim that v1's SQLite + `IMemoryCache` design was a mistake.** `data-design-guidelines.md` §1 frames SQLite as the right fit for "a single-application, low-to-moderate concurrency workload" and pre-commits to exactly this escalation path: *"If the project later needs multi-user server concurrency, horizontal scale, or remote access, that is a signal to migrate to a server-based RDBMS."* `nfr-scalability.md` §3 and §4 already name SQLite's single-writer ceiling as a documented Exception and lay out the swap-the-provider escalation path. This v2 review is that escalation, worked through in detail for a specific target scale. v3 will trim the result back down to whatever the actual shipping requirement turns out to be — this document is not proposing that the extreme-scale design ships as-is.
 
-This document covers the **create (write) path only** — AF-01 (create a short URL) and AF-04 (system-generated short code). The read/redirect path (ANFR-05, ANFR-06) is addressed by the caching/CDN/BFF documents in this series (05, 07) where it intersects with write-path decisions (e.g., cache invalidation on create).
+This document covers the **create (write) path only** — AF-01 (create a short URL) and AF-04 (system-generated short code). The read/redirect path (ANFR-05, ANFR-06) is addressed by the caching/CDN/BFF documents in this series (06, 07) where it intersects with write-path decisions (e.g., cache invalidation on create).
 
 ---
 
