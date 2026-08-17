@@ -154,7 +154,7 @@ This overview sets up six follow-on documents, each owning one piece of the extr
 | 2 | Short-code generation | Pre-allocated ID blocks per instance + reversible obfuscation before base62 encoding; Snowflake-style local generation as the named fallback if the allocator itself contends | AF-04, ANFR-08; `fn-create.md` §6 |
 | 3 | API layer | Stateless, horizontally scaled — unchanged in kind from v1, larger in degree; rate-limit counters must externalize | ANFR-01, ANFR-06; `nfr-scalability.md` §4 |
 | 4 | Primary datastore | Server RDBMS with read replicas and/or sharding as the write-of-record; Elasticsearch/MongoDB placement deferred to docs 03/04 | `data-design-guidelines.md` §1 |
-| 5 | Downstream work | Decouple via asynchronous event publication after the authoritative write; Outbox (02) and Kafka (05) own the mechanics | AF-01; sets up docs 02, 05 |
-| 6 | Document map | 02/05 = safe async publishing; 03/04 = data placement; 06/07 = read-path payoff of write-path events | — |
+| 5 | Downstream work | Decouple via asynchronous event publication after the authoritative write; Outbox (20) and Kafka (05) own the mechanics | AF-01; sets up docs 20, 05 |
+| 6 | Document map | 20/05 = safe async publishing; 03/04 = data placement; 06/07 = read-path payoff of write-path events | — |
 
 **This document does not claim these are v1's requirements.** It is a scoped answer to "what would extreme scale require," per the review prompt's framing — v3 determines what, if anything, of this actually ships.

@@ -39,7 +39,9 @@ public class ShortUrl : AuditableEntity
     // makes ANFR-02 a structural guarantee, not a convention developers must remember.
     public string OriginalUrl { get; private set; } = string.Empty;
 
-    public bool IsActive { get; set; } = true;
+    // Deactivation reuses the standard IsDeleted/DeletedAtUtc soft-delete columns
+    // already inherited from AuditableEntity — see fn-fetch.md §7.2, which deliberately
+    // rejects a separate IsActive/Status flag as a redundant, overlapping signal.
     public DateTime? ExpiresAtUtc { get; set; }
 
     // Constructor/factory is the only writer of OriginalUrl.
@@ -55,7 +57,7 @@ public class ShortUrl : AuditableEntity
 }
 ```
 
-- `IShortUrlRepository` (per `design-guidelines.md` §2) exposes no update method that touches `OriginalUrl`; `IRepository<T>.Update` is used only for the lifecycle fields (`IsActive`, `ExpiresAtUtc`) via the `Application` service, never for the immutable field.
+- `IShortUrlRepository` (per `design-guidelines.md` §2) exposes no update method that touches `OriginalUrl`; `IRepository<T>.Update` is used only for the lifecycle fields (`IsDeleted`/`DeletedAtUtc`, `ExpiresAtUtc`) via the `Application` service, never for the immutable field.
 - **Retired codes are never reused** (in-scope Q11): once a code is deactivated/removed, it is never reissued for a different URL. This closes the one remaining way ANFR-02 could be violated in spirit — a *new* mapping silently taking over an *old* code. A retired `Code` value is excluded from the short-code generator's candidate pool (enforced by the same uniqueness check used for collision handling, AF-04).
 - **What ANFR-02 does *not* claim:** a deactivated/expired link stops *resolving* to a redirect (it instead serves the branded not-found/expired page per in-scope Q10) — but for the *entire lifetime the mapping is active*, it resolves to one and only one `OriginalUrl`. Availability of the mapping and stability of its target are two different guarantees; this document is careful to keep them separate.
 
@@ -180,7 +182,10 @@ public async Task DeactivateAsync(long shortUrlId, CancellationToken cancellatio
         var shortUrl = await _repository.GetByIdAsync(shortUrlId, cancellationToken)
             ?? throw new NotFoundException(shortUrlId);
 
-        shortUrl.IsActive = false;
+        // Reuses the standard soft-delete columns (fn-fetch.md §7.2) — no separate
+        // IsActive/Status flag.
+        shortUrl.IsDeleted = true;
+        shortUrl.DeletedAtUtc = DateTime.UtcNow;
         _repository.Update(shortUrl);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
