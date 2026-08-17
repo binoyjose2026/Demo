@@ -1,7 +1,7 @@
 # Functional Design — Fetch (Short URL Resolution & Redirect)
 
 **Layer scope:** `UrlShortener.Api` (controller/routing), `UrlShortener.Application` (resolution service), `UrlShortener.Infrastructure` (repository), `UrlShortener.Domain` (entity/interfaces).
-**Companion documents:** `fn-create.md` (short URL creation), `fn-analytics.md` (access-event recording, click counts), `nfr-performance-scalability.md` (caching, throughput, latency targets).
+**Companion documents:** `fn-create.md` (short URL creation), `fn-analytics.md` (access-event recording, click counts), `nfr-performance.md` and `nfr-scalability.md` (caching, throughput, latency targets).
 **Status:** v1 initial design.
 
 ---
@@ -30,7 +30,7 @@ It does **not** cover short-code generation/creation (`fn-create.md`) or the mec
 | AF-05 | Metadata endpoint as a separate concern (Section 9). |
 | AF-06 | Defined not-found/expired response (Section 8). |
 | AF-07 | Deactivation handling reuses soft-delete (Section 7). |
-| ANFR-01, ANFR-05, ANFR-06 | Aggressive caching enabled by immutability (Section 6); cross-referenced to `nfr-performance-scalability.md`. |
+| ANFR-01, ANFR-05, ANFR-06 | Aggressive caching enabled by immutability (Section 6); cross-referenced to `nfr-performance.md`/`nfr-scalability.md`. |
 | ANFR-02 | Consistent resolution for the mapping's lifetime — the immutability guarantee this design relies on (Section 6). |
 | Q7 | Original URL is immutable once created (Section 6). |
 | Q8, Q9 | Expiration is opt-in, no default, capped at a placeholder maximum (Section 7). |
@@ -189,7 +189,7 @@ public class ShortUrl : AuditableEntity
 
 This guarantee is what the fetch design is built around:
 
-- **Cache safety without invalidation complexity.** Because `(ShortCode → OriginalUrl)` is write-once, a resolved mapping can be cached aggressively — in-process, distributed, or CDN-fronted — with no cache-invalidation-on-update problem to solve (there is no update). The only cache event this design needs to reason about is *removal* (deactivation/expiry — Section 7), not staleness of the URL value itself. The specific caching technology, TTL, and invalidation trigger are defined in `nfr-performance-scalability.md` and are not repeated here — this document only establishes that caching is *safe*, because of Q7/ANFR-02.
+- **Cache safety without invalidation complexity.** Because `(ShortCode → OriginalUrl)` is write-once, a resolved mapping can be cached aggressively — in-process, distributed, or CDN-fronted — with no cache-invalidation-on-update problem to solve (there is no update). The only cache event this design needs to reason about is *removal* (deactivation/expiry — Section 7), not staleness of the URL value itself. The specific caching technology, TTL, and invalidation trigger are defined in `nfr-scalability.md` and are not repeated here — this document only establishes that caching is *safe*, because of Q7/ANFR-02.
 - **No cache-coherency/versioning need for `OriginalUrl` itself.** Unlike most cached data, there is no `RowVersion`-driven "is my cached copy stale" check required for the URL value — immutability makes that question moot for as long as the mapping is active.
 
 > This is a deliberate reliance on a requirement decision, not an assumption: if Q7 is ever revisited (URLs become editable), every cache layer built on this guarantee must be revisited too. That coupling is called out here explicitly so it isn't rediscovered as a bug later.

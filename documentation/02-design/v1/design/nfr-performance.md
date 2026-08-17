@@ -1,7 +1,7 @@
 # Performance Design — URL Shortener (v1)
 
 **Status:** Draft
-**Companion documents:** `nfr-scalability.md` (throughput/scale-out, caching architecture), `nfr-reliability.md` (availability), `fn-fetch.md` (redirect flow), `data-design-guidelines.md`, `design-guidelines.md`, `coding-guidelines.md`
+**Companion documents:** `nfr-scalability.md` (throughput/scale-out, caching architecture), `nfr-reliability-and-availability.md` (availability), `fn-fetch.md` (redirect flow), `data-design-guidelines.md`, `design-guidelines.md`, `coding-guidelines.md`
 
 ## 1. Purpose & Scope
 
@@ -108,16 +108,19 @@ All data access on the redirect path (and every other path) is `async`/`await` e
 [HttpGet("/{code}")]
 public async Task<IActionResult> RedirectAsync(string code, CancellationToken cancellationToken)
 {
-    var target = await _shortUrlService.ResolveAsync(code, cancellationToken);
+    var result = await _resolver.ResolveAsync(code, cancellationToken);
 
-    if (target is null)
+    return result.Status switch
     {
-        return RedirectToAction(nameof(NotFoundPageController.Show)); // AF-06 — defined not-found response
-    }
-
-    return RedirectPermanent(target.OriginalUrl);
+        ShortUrlResolutionStatus.Resolved => Redirect(result.OriginalUrl!),   // 302 Found — see fn-fetch.md §10
+        ShortUrlResolutionStatus.Expired  => StatusCode(StatusCodes.Status410Gone, LinkUnavailablePage.Html),
+        ShortUrlResolutionStatus.NotFound => NotFound(LinkUnavailablePage.Html),  // AF-06 — defined not-found response
+        _ => NotFound()
+    };
 }
 ```
+
+Note: **`302 Found` (temporary redirect), not `301`/`RedirectPermanent`** — a `301` would let browsers/proxies cache the redirect client-side, silently breaking AF-08's per-access analytics and AF-06/AF-07's real-time expiry/deactivation enforcement on repeat visits. See `fn-fetch.md` §10 for the full rationale; this document's own async/no-N+1/caching decisions in Sections 3–6 are what keep that per-request server hit cheap, not a client-cached permanent redirect.
 
 - Controller → application service → repository → `DbContext` is `async` at every hop; no `.Result`/`.Wait()`/`GetAwaiter().GetResult()` anywhere in the chain (coding guidelines Section 5's explicit deadlock/blocking prohibition applies with extra force on the hottest path, where a single blocked thread has the widest blast radius under load).
 - `CancellationToken` is threaded from the ASP.NET Core request pipeline through to `FirstOrDefaultAsync(cancellationToken)`, so an aborted client connection frees the request thread and the in-flight SQLite read promptly instead of running to completion for no one.
