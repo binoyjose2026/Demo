@@ -6,7 +6,7 @@ namespace UrlShortener.Infrastructure.Repositories;
 
 /// <summary>
 /// Coordinates repositories under a single AppDbContext/SaveChangesAsync call.
-/// See: global/guidelines/design-guidelines.md §2.
+/// See: engineering-standards/guidelines/design-guidelines.md §2.
 /// </summary>
 public sealed class UnitOfWork : IUnitOfWork
 {

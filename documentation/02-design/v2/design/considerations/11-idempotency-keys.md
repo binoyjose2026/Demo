@@ -3,7 +3,7 @@
 **Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/agent-prompt.md`.
 **Builds on (does not replace):** `v1/design/fn-create.md` (the create-link flow this document adds idempotency to — validation pipeline, short-code generation, persistence sequence, DTOs). This document does not restate any of that flow; it adds one new guard clause in front of it.
 **Related v2 documents (by filename, not duplicated here):** `01-create-path-extreme-scalability.md` (the multi-instance write path and the 1M-5M creates/day target this document assumes), `09-resilience-patterns.md` (client-side retry-with-backoff-and-jitter — the pattern that makes duplicate requests routine at this scale; not restated here, only its consequence is), `07-redis-caching-and-invalidation.md` (the existing Redis tier this document's storage recommendation reuses — key-naming and TTL-as-backstop conventions carried forward, not re-derived).
-**Cross-references `UrlShortner/global/guidelines/data-design-guidelines.md`** for the `Id`/`RowVersion`/audit-field conventions and explains where the idempotency record does and does not follow them (Section 3).
+**Cross-references `UrlShortener/engineering-standards/guidelines/data-design-guidelines.md`** for the `Id`/`RowVersion`/audit-field conventions and explains where the idempotency record does and does not follow them (Section 3).
 
 ---
 
@@ -56,7 +56,7 @@ On every create request that carries the header, before `fn-create.md`'s validat
 ### 2.4 DTO / filter sketch
 
 ```csharp
-namespace UrlShortner.Application.Common;
+namespace UrlShortener.Application.Common;
 
 /// <summary>
 /// Idempotency record for a single (CreatorId, IdempotencyKey) pair. Write-once —
@@ -82,7 +82,7 @@ public sealed class IdempotencyRecord
 ```
 
 ```csharp
-namespace UrlShortner.Api.Filters;
+namespace UrlShortener.Api.Filters;
 
 /// <summary>
 /// Detects and short-circuits duplicate create requests carrying an Idempotency-Key header.
@@ -176,7 +176,7 @@ Justification:
 
 ## 5. Where This Fits in the Request Pipeline
 
-**This is an MVC action filter, not middleware** — a concrete implementation of the **Action filter** placeholder already fixed in `global/guidelines/design-guidelines.md` §5 (the same category `ValidateModelStateFilter` is the existing placeholder example for).
+**This is an MVC action filter, not middleware** — a concrete implementation of the **Action filter** placeholder already fixed in `engineering-standards/guidelines/design-guidelines.md` §5 (the same category `ValidateModelStateFilter` is the existing placeholder example for).
 
 Why an action filter and not middleware:
 

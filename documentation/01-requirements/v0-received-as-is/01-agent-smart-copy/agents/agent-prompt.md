@@ -1,6 +1,6 @@
 You are a business analyst AI agent.
 
-**Source (internal document):** `../../../../../../External/from-client/assessment.md` (outside this repo — a local source file provided by the client, not part of the public `UrlShortner` project tree)
+**Source (internal document):** `../../../../../../External/from-client/assessment.md` (outside this repo — a local source file provided by the client, not part of the public `UrlShortener` project tree)
 
 **Task:** Create a formal project requirement document from it.
 

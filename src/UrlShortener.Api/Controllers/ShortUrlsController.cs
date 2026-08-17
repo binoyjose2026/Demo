@@ -10,7 +10,7 @@ namespace UrlShortener.Api.Controllers;
 /// <summary>
 /// AF-01: create a new short URL. Thin controller -- binds/validates the request, calls
 /// one Application service method, maps the result to an HTTP response. No business logic.
-/// See: global/guidelines/design-guidelines.md §3, documentation/02-design/v1/design/fn-create.md.
+/// See: engineering-standards/guidelines/design-guidelines.md §3, documentation/02-design/v1/design/fn-create.md.
 /// </summary>
 /// <remarks>
 /// Item 11 (API versioning): this is this MVP's one real API contract surface, so it is

@@ -2,7 +2,7 @@
 
 **Version:** v1
 **Status:** Draft
-**Consistent with:** [`coding-giudelines.md`](../../../../global/guidelines/coding-giudelines.md) §9 (Testing Conventions), [`data-design-guidelines.md`](../../../../global/guidelines/data-design-guidelines.md), [`design-guidelines.md`](../../../../global/guidelines/design-guidelines.md) §1 (Solution & Project Layout)
+**Consistent with:** [`coding-guidelines.md`](../../../../engineering-standards/guidelines/coding-guidelines.md) §9 (Testing Conventions), [`data-design-guidelines.md`](../../../../engineering-standards/guidelines/data-design-guidelines.md), [`design-guidelines.md`](../../../../engineering-standards/guidelines/design-guidelines.md) §1 (Solution & Project Layout)
 **Companion document:** `nfr-integration-testing.md` (EF Core/SQLite behavior, HTTP pipeline, end-to-end redirect flow — not duplicated here)
 
 ---
@@ -19,14 +19,14 @@ Test projects mirror the layered solution structure from `design-guidelines.md` 
 
 | Test project | Tests | References |
 |---|---|---|
-| `UrlShortner.Domain.Tests` | `UrlShortner.Domain` — entities, value objects, domain rules | `UrlShortner.Domain` |
-| `UrlShortner.Application.Tests` | `UrlShortner.Application` — application services, DTO validation/mapping | `UrlShortner.Application` (→ transitively `Domain`, `Common`), `Moq`, `xunit` |
+| `UrlShortener.Domain.Tests` | `UrlShortener.Domain` — entities, value objects, domain rules | `UrlShortener.Domain` |
+| `UrlShortener.Application.Tests` | `UrlShortener.Application` — application services, DTO validation/mapping | `UrlShortener.Application` (→ transitively `Domain`, `Common`), `Moq`, `xunit` |
 
-`UrlShortner.Infrastructure` and `UrlShortner.Api` have **no unit test project** — see §5 for rationale; they are covered by the integration testing design instead.
+`UrlShortener.Infrastructure` and `UrlShortener.Api` have **no unit test project** — see §5 for rationale; they are covered by the integration testing design instead.
 
-- **Folder structure inside each test project mirrors the source project's folder/namespace structure**, per the "folder structure mirrors namespace" rule in `coding-giudelines.md` §2 — e.g. `UrlShortner.Application/Services/ShortUrlService.cs` is tested by `UrlShortner.Application.Tests/Services/ShortUrlServiceTests.cs`.
+- **Folder structure inside each test project mirrors the source project's folder/namespace structure**, per the "folder structure mirrors namespace" rule in `coding-guidelines.md` §2 — e.g. `UrlShortener.Application/Services/ShortUrlService.cs` is tested by `UrlShortener.Application.Tests/Services/ShortUrlServiceTests.cs`.
 - **One test class per production class** (`ShortUrlServiceTests` for `ShortUrlService`), consistent with the "one type per file" convention.
-- Test projects follow the same dependency-direction rule as production code (`design-guidelines.md` §1): `UrlShortner.Application.Tests` never references `Infrastructure` or `Api` — it mocks `Domain`-defined abstractions (`IRepository<T>`, `IUnitOfWork`) instead, so these tests stay fast and layer-isolated by construction, not just by convention.
+- Test projects follow the same dependency-direction rule as production code (`design-guidelines.md` §1): `UrlShortener.Application.Tests` never references `Infrastructure` or `Api` — it mocks `Domain`-defined abstractions (`IRepository<T>`, `IUnitOfWork`) instead, so these tests stay fast and layer-isolated by construction, not just by convention.
 
 ---
 
@@ -34,18 +34,18 @@ Test projects mirror the layered solution structure from `design-guidelines.md` 
 
 | Concern | Standard | Rationale |
 |---|---|---|
-| **Test framework** | **xUnit** (`[Fact]`, `[Theory]`) | Already the framework used in the AAA example in `coding-giudelines.md` §9 — adopting it here keeps the two documents consistent rather than introducing a second framework. |
+| **Test framework** | **xUnit** (`[Fact]`, `[Theory]`) | Already the framework used in the AAA example in `coding-guidelines.md` §9 — adopting it here keeps the two documents consistent rather than introducing a second framework. |
 | **Mocking library** | **Moq** | The de facto standard mocking library for .NET, with the broadest documentation/community support and a `Setup`/`Verify` API that maps directly onto this project's constructor-injected abstractions (`IRepository<T>`, `IUnitOfWork`, `IShortCodeGenerator`, etc. — see `design-guidelines.md` §2, §6). No source-generator or additional build-time tooling required, keeping the test project simple. |
-| **Assertion library** | **xUnit's built-in `Assert`** | `coding-giudelines.md` §9 already illustrates `Assert.Equal(...)` in its canonical AAA example; standardizing on it avoids adding a second assertion DSL (e.g., FluentAssertions) for marginal fluency gains. This is a deliberate choice, not an oversight — FluentAssertions was considered and rejected to keep the test-project dependency surface minimal, consistent with the "avoid unnecessary allocations/dependencies" spirit of the coding guidelines. |
+| **Assertion library** | **xUnit's built-in `Assert`** | `coding-guidelines.md` §9 already illustrates `Assert.Equal(...)` in its canonical AAA example; standardizing on it avoids adding a second assertion DSL (e.g., FluentAssertions) for marginal fluency gains. This is a deliberate choice, not an oversight — FluentAssertions was considered and rejected to keep the test-project dependency surface minimal, consistent with the "avoid unnecessary allocations/dependencies" spirit of the coding guidelines. |
 | **Coverage tooling** | `coverlet.collector` via `dotnet test --collect:"XPlat Code Coverage"` | Standard .NET SDK-integrated coverage collector; no extra CI-specific tooling needed. |
 
-NuGet packages per test project: `Microsoft.NET.Test.Sdk`, `xunit`, `xunit.runner.visualstudio`, `coverlet.collector`, plus `Moq` for `UrlShortner.Application.Tests`. `UrlShortner.Domain.Tests` generally does not need `Moq` (see §4.1) unless a domain service takes an injected collaborator.
+NuGet packages per test project: `Microsoft.NET.Test.Sdk`, `xunit`, `xunit.runner.visualstudio`, `coverlet.collector`, plus `Moq` for `UrlShortener.Application.Tests`. `UrlShortener.Domain.Tests` generally does not need `Moq` (see §4.1) unless a domain service takes an injected collaborator.
 
 ---
 
 ## 4. What Gets Unit Tested, and How
 
-### 4.1 Domain layer (`UrlShortner.Domain.Tests`)
+### 4.1 Domain layer (`UrlShortener.Domain.Tests`)
 
 Tests entity and value-object **behavior in isolation**, with no mocks, no DI container, and no `AuditableEntity` plumbing:
 
@@ -55,7 +55,7 @@ Tests entity and value-object **behavior in isolation**, with no mocks, no DI co
 
 **Exception:** Domain unit tests deliberately do **not** assert on `AuditableEntity` base-class fields (`CreatedAtUtc`, `RowVersion`, `IsDeleted`, etc., per `data-design-guidelines.md` §3–§5). Those are populated by the `SaveChangesAsync` override/interceptor in `Infrastructure`, not by domain logic — asserting them here would be testing another layer's behavior through the wrong door. That plumbing is verified in the integration testing design instead.
 
-### 4.2 Application layer (`UrlShortner.Application.Tests`)
+### 4.2 Application layer (`UrlShortener.Application.Tests`)
 
 Tests application services (e.g., `IShortUrlService`) **with every collaborator mocked** — no real database, no real `AppDbContext`, no EF Core provider of any kind:
 
@@ -74,15 +74,15 @@ Tests application services (e.g., `IShortUrlService`) **with every collaborator 
 The following are **not** covered by unit tests in this project, by design — they require real infrastructure that a unit test (by definition, one class + mocks) cannot meaningfully exercise:
 
 - **EF Core / SQLite query behavior** — `AppDbContext` configuration, migrations, the `RowVersion` concurrency token's actual `DbUpdateConcurrencyException` behavior, the global soft-delete query filter, generated SQL — all belong to `Infrastructure` and are verified against a real (or test-instance) SQLite database in the integration testing design.
-- **`UrlShortner.Infrastructure` repository implementations** — `Repository<T>`, `IUnitOfWork` implementation, and any entity-specific repository (e.g., `IShortUrlRepository`) are exercised end-to-end against SQLite in integration tests, not unit-tested against mocks of `DbContext` (mocking `DbContext`/`DbSet<T>` directly is fragile and low-value; testing the real provider is more representative).
-- **HTTP pipeline and controllers (`UrlShortner.Api`)** — model binding, routing, middleware (global exception handling, correlation/logging, auth), MVC filters (`design-guidelines.md` §4–§5), and `ProblemDetails` response shaping are verified via integration/functional tests (e.g., `WebApplicationFactory`), not controller unit tests. Per `design-guidelines.md` §3, controllers are intentionally thin (bind → call one `Application` service → map result), so a controller "unit" test with a mocked service would mostly re-verify ASP.NET Core's own wiring rather than any logic owned by this codebase — better value comes from an integration test that exercises the real pipeline.
+- **`UrlShortener.Infrastructure` repository implementations** — `Repository<T>`, `IUnitOfWork` implementation, and any entity-specific repository (e.g., `IShortUrlRepository`) are exercised end-to-end against SQLite in integration tests, not unit-tested against mocks of `DbContext` (mocking `DbContext`/`DbSet<T>` directly is fragile and low-value; testing the real provider is more representative).
+- **HTTP pipeline and controllers (`UrlShortener.Api`)** — model binding, routing, middleware (global exception handling, correlation/logging, auth), MVC filters (`design-guidelines.md` §4–§5), and `ProblemDetails` response shaping are verified via integration/functional tests (e.g., `WebApplicationFactory`), not controller unit tests. Per `design-guidelines.md` §3, controllers are intentionally thin (bind → call one `Application` service → map result), so a controller "unit" test with a mocked service would mostly re-verify ASP.NET Core's own wiring rather than any logic owned by this codebase — better value comes from an integration test that exercises the real pipeline.
 - **Cross-layer/end-to-end flows** — e.g., "create a short URL then redirect through it" spans `Api` → `Application` → `Infrastructure` → SQLite and is an integration/functional test scenario, not a unit test.
 
 ---
 
 ## 6. Naming Convention & AAA Structure
 
-Test naming and structure follow `coding-giudelines.md` §9 exactly — not restated here beyond a pointer:
+Test naming and structure follow `coding-guidelines.md` §9 exactly — not restated here beyond a pointer:
 
 - Naming pattern: `MethodName_Scenario_ExpectedBehavior`.
 - Structure: Arrange / Act / Assert, with a blank line (or `// Arrange`, `// Act`, `// Assert` comments) separating each phase.
@@ -97,13 +97,13 @@ Skeleton for the create-short-URL use case (**AF-01**), showing the naming conve
 
 ```csharp
 using Moq;
-using UrlShortner.Application.Contracts;
-using UrlShortner.Application.Services;
-using UrlShortner.Domain.Entities;
-using UrlShortner.Domain.Repositories;
+using UrlShortener.Application.Contracts;
+using UrlShortener.Application.Services;
+using UrlShortener.Domain.Entities;
+using UrlShortener.Domain.Repositories;
 using Xunit;
 
-namespace UrlShortner.Application.Tests.Services;
+namespace UrlShortener.Application.Tests.Services;
 
 public class ShortUrlServiceTests
 {

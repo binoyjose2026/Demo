@@ -13,7 +13,7 @@ namespace UrlShortener.Application.Tests.ShortUrls;
 
 /// <summary>
 /// Unit tests for <see cref="ShortUrlService"/> (AF-01, AF-03, AF-04) with every
-/// collaborator mocked -- no real database. Naming/AAA per coding-giudelines.md §9;
+/// collaborator mocked -- no real database. Naming/AAA per coding-guidelines.md §9;
 /// scope per nfr-unit-testing.md §4.2.
 /// </summary>
 public class ShortUrlServiceTests

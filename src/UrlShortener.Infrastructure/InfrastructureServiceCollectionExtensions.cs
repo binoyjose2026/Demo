@@ -12,7 +12,7 @@ namespace UrlShortener.Infrastructure;
 
 /// <summary>
 /// Infrastructure-layer DI registration, called from Program.cs.
-/// See: global/guidelines/design-guidelines.md §6.
+/// See: engineering-standards/guidelines/design-guidelines.md §6.
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {

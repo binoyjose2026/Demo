@@ -9,7 +9,7 @@
 - `05-kafka-comparison.md` — establishes the event-driven broker pipeline (`UrlCreated`/`UrlClicked` events, independent consumers) that this document treats as the natural AI attachment point.
 - `08-metadata-management.md` — covers how link/file metadata is modeled and stored today; this document only adds an optional field to that shape, it does not redesign it.
 - `nfr-security.md` / a future `22-security-reputation-hacking-authorization.md` — own the actual threat model and the existing `IMaliciousUrlChecker` design (Strategy/Adapter, per `design-guidelines.md` §8); this document only observes that an AI-based classifier is a drop-in alternative implementation of that same interface, not a replacement design.
-- `UrlShortner/global/guidelines/design-guidelines.md` — the layered architecture and Design Pattern Catalog (§8) this document maps every extension point onto. No new architectural primitive is introduced.
+- `UrlShortener/engineering-standards/guidelines/design-guidelines.md` — the layered architecture and Design Pattern Catalog (§8) this document maps every extension point onto. No new architectural primitive is introduced.
 - `fn-create.md`, `fn-analytics.md` (v1) — the create and analytics flows this document is careful *not* to modify.
 
 ---
@@ -108,7 +108,7 @@ Because this consumer is *just another subscriber*, adopting it later requires z
 `design-guidelines.md` §8 already lists Strategy as the pattern for "pluggable... algorithm behind a common interface, swappable via DI," and `fn-create.md` §9 / `nfr-security.md` §4 already apply it to `IMaliciousUrlChecker` / `IShortCodeGenerator`. A future AI-based classifier is simply a second implementation of the same seam, not a new one:
 
 ```csharp
-namespace UrlShortner.Domain.ShortUrls;
+namespace UrlShortener.Domain.ShortUrls;
 
 /// <summary>
 /// Strategy for deciding whether a submitted URL should be rejected on safety/policy

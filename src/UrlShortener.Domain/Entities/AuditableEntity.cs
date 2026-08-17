@@ -3,7 +3,7 @@ namespace UrlShortener.Domain.Entities;
 /// <summary>
 /// Base class providing the standard Id, audit, concurrency, and soft-delete columns
 /// that every table in this project must have.
-/// See: global/guidelines/data-design-guidelines.md, "Standard Column Set".
+/// See: engineering-standards/guidelines/data-design-guidelines.md, "Standard Column Set".
 /// </summary>
 public abstract class AuditableEntity
 {

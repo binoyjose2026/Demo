@@ -6,7 +6,7 @@ namespace UrlShortener.Api.Middleware;
 
 /// <summary>
 /// Converts unhandled exceptions into a ProblemDetails response -- the standard error
-/// shape for this API (global/guidelines/design-guidelines.md §3-4). Implemented as an
+/// shape for this API (engineering-standards/guidelines/design-guidelines.md §3-4). Implemented as an
 /// <see cref="IExceptionHandler"/> (the current idiomatic ASP.NET Core mechanism, wired
 /// via app.UseExceptionHandler() in Program.cs), which fills the same "global
 /// exception-handling middleware" role the design guidelines placeholder describes.
@@ -27,7 +27,7 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
         // UrlTooLongException) is a distinct type but all derive from ValidationAppException,
         // so the switch maps every one of them to 400 without needing a case per subtype
         // (Open/Closed). "detail" is deliberately NOT exception.Message for the generic
-        // fallback case: coding-giudelines.md §6 / nfr-security.md §9 require that
+        // fallback case: coding-guidelines.md §6 / nfr-security.md §9 require that
         // internal exception messages/stack traces never leak to the client on a true 500
         // -- only the two known, intentionally-client-safe exception types below (whose
         // messages never contain internal state) get their own Message surfaced.

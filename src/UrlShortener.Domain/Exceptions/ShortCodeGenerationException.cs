@@ -8,7 +8,7 @@ namespace UrlShortener.Domain.Exceptions;
 ///
 /// This is a Domain-level concern (a business invariant about the short-code generation
 /// process, independent of ASP.NET Core/EF Core/any Application-layer orchestration), so
-/// it lives in <c>UrlShortener.Domain</c> per global/guidelines/design-guidelines.md §1.
+/// it lives in <c>UrlShortener.Domain</c> per engineering-standards/guidelines/design-guidelines.md §1.
 /// </summary>
 public sealed class ShortCodeGenerationException : Exception
 {

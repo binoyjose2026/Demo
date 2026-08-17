@@ -1,7 +1,7 @@
 # Performance Design — URL Shortener (v1)
 
 **Status:** Draft
-**Companion documents:** `nfr-scalability.md` (throughput/scale-out, caching architecture), `nfr-reliability.md` (availability), `fn-fetch.md` (redirect flow), `data-design-guidelines.md`, `design-guidelines.md`, `coding-giudelines.md`
+**Companion documents:** `nfr-scalability.md` (throughput/scale-out, caching architecture), `nfr-reliability.md` (availability), `fn-fetch.md` (redirect flow), `data-design-guidelines.md`, `design-guidelines.md`, `coding-guidelines.md`
 
 ## 1. Purpose & Scope
 
@@ -102,7 +102,7 @@ public async Task<ShortUrlRedirectTarget?> FindRedirectTargetAsync(string code, 
 
 ## 5. Asynchronous I/O
 
-All data access on the redirect path (and every other path) is `async`/`await` end-to-end, per `coding-giudelines.md` Section 5:
+All data access on the redirect path (and every other path) is `async`/`await` end-to-end, per `coding-guidelines.md` Section 5:
 
 ```csharp
 [HttpGet("/{code}")]
@@ -129,7 +129,7 @@ An in-memory cache in front of `IShortUrlRepository` (a `Decorator`-pattern `Cac
 
 ## 7. Avoiding Premature Optimization
 
-Per `coding-giudelines.md` Section 11 ("write clear, correct code first; profile before optimizing, and optimize only the parts that measurably matter"), this design deliberately **does not**:
+Per `coding-guidelines.md` Section 11 ("write clear, correct code first; profile before optimizing, and optimize only the parts that measurably matter"), this design deliberately **does not**:
 
 - Add a caching layer, projection types, or bespoke query tuning to the **create** (AF-01) or **analytics retrieval** (AF-10) paths — both are low-volume relative to redirects (ANFR-05's own premise) and use the plain `IRepository<T>` CRUD returning full entities, exactly as `design-guidelines.md` Section 2 describes as the default.
 - Introduce a composite or covering index beyond `IX_ShortUrl_Code` until a profiled query pattern (per `data-design-guidelines.md` Section 7: "add indexes driven by actual query patterns, not speculatively") shows one is needed.
@@ -144,7 +144,7 @@ Per `coding-giudelines.md` Section 11 ("write clear, correct code first; profile
 | 2 | Unique index on `ShortUrl.Code`; `RowVersion` index per standing convention | ANFR-05; `data-design-guidelines.md` §7 |
 | 3 | Redirect query uses `.Select()` projection + `.AsNoTracking()` instead of loading the full entity | ANFR-05 |
 | 4 | **Exception:** `FindRedirectTargetAsync` returns a non-entity projection record, not a `Domain` entity | ANFR-05, deviates from `design-guidelines.md` §2 (rationale in Section 4) |
-| 5 | Async/await end-to-end with `CancellationToken` propagation on the redirect path | ANFR-06; `coding-giudelines.md` §5 |
+| 5 | Async/await end-to-end with `CancellationToken` propagation on the redirect path | ANFR-06; `coding-guidelines.md` §5 |
 | 6 | Access-event write is decoupled from the redirect response | ANFR-05; AF-08 |
 | 7 | Caching architecture deferred to `nfr-scalability.md`; not duplicated here | ANFR-06 |
-| 8 | No optimization applied to create/analytics paths; no speculative indexing or messaging infra | `coding-giudelines.md` §11 |
+| 8 | No optimization applied to create/analytics paths; no speculative indexing or messaging infra | `coding-guidelines.md` §11 |

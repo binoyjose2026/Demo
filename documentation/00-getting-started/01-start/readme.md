@@ -21,9 +21,9 @@ Client provided basic requirements. Instead of iterating through clarification c
 - [v2 extreme-scale design review (28 documents, browsable site)](../../../client-deliverables/website/index.html)
 
 ### Global guidelines
-- [Coding guidelines (C#/.NET)](../../../global/guidelines/coding-giudelines.md)
-- [Data design guidelines (SQLite/EF Core, audit fields, RowVersion)](../../../global/guidelines/data-design-guidelines.md)
-- [Architecture/design guidelines (layered solution, repository pattern, DI, SOLID)](../../../global/guidelines/design-guidelines.md)
+- [Coding guidelines (C#/.NET)](../../../engineering-standards/guidelines/coding-guidelines.md)
+- [Data design guidelines (SQLite/EF Core, audit fields, RowVersion)](../../../engineering-standards/guidelines/data-design-guidelines.md)
+- [Architecture/design guidelines (layered solution, repository pattern, DI, SOLID)](../../../engineering-standards/guidelines/design-guidelines.md)
 
 ### Requirements
 - [Functional requirements — app](../../01-requirements/v0-received-as-is/app/requirement.app.functional.md)
@@ -50,7 +50,7 @@ Best read via the [browsable site](../../../client-deliverables/website/index.ht
 - [API project structure (layered solution)](../../02-design/v3.MVP/design/api-project-structure.md)
 - [API design (the two shipped endpoints)](../../02-design/v3.MVP/design/api-design.md)
 - [Exception & logging strategy (Serilog, exception hierarchy)](../../02-design/v3.MVP/design/exception-and-logging-strategy.md)
-- [Working code](../../../src/) — solution file: `../../../src/UrlShortner.sln`
+- [Working code](../../../src/) — solution file: `../../../src/UrlShortener.sln`
 - [Test run logs (build/test/run output captured here)](../../../src/test/logs/)
 
 ### Wrap-up

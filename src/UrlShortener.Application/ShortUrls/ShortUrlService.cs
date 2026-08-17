@@ -12,7 +12,7 @@ namespace UrlShortener.Application.ShortUrls;
 /// Create-short-URL use case (AF-01, AF-03, AF-04). Thin orchestration only -- validation
 /// rules and the collision-retry loop are the only business logic that lives here; actual
 /// generation and persistence are delegated to injected abstractions (Dependency Inversion,
-/// global/guidelines/design-guidelines.md §7).
+/// engineering-standards/guidelines/design-guidelines.md §7).
 /// See: documentation/02-design/v1/design/fn-create.md for the full (pre-MVP-trim) design
 /// this is scoped down from.
 /// </summary>

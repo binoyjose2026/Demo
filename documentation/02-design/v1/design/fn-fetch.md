@@ -1,6 +1,6 @@
 # Functional Design — Fetch (Short URL Resolution & Redirect)
 
-**Layer scope:** `UrlShortner.Api` (controller/routing), `UrlShortner.Application` (resolution service), `UrlShortner.Infrastructure` (repository), `UrlShortner.Domain` (entity/interfaces).
+**Layer scope:** `UrlShortener.Api` (controller/routing), `UrlShortener.Application` (resolution service), `UrlShortener.Infrastructure` (repository), `UrlShortener.Domain` (entity/interfaces).
 **Companion documents:** `fn-create.md` (short URL creation), `fn-analytics.md` (access-event recording, click counts), `nfr-performance-scalability.md` (caching, throughput, latency targets).
 **Status:** v1 initial design.
 
@@ -256,7 +256,7 @@ Both cases return the same branded HTML body (Q10); the status code difference i
 | Response shape | HTTP redirect or branded HTML (Section 8). | JSON DTO (`ShortUrlMetadataResponse`), `ProblemDetails` on genuine 404. |
 | Triggers AF-08 analytics event? | **Yes** — a redirect is a real access/click (Section 11). | **No** — see below. |
 
-**Design decision — metadata retrieval must not count as a click.** AF-08 ("record an access event each time a short URL is resolved") is scoped to *resolution for redirect purposes*. If the metadata endpoint also recorded an access event, an owner checking their own link's status would silently inflate their own click count (AF-09), which would be a correctness bug in analytics, not a feature. The resolver service used by redirect (`IShortUrlResolverService`) and the read path used by metadata are therefore kept as separate `Application`-layer operations rather than one shared "get and count" method — consistent with Single Responsibility (`coding-giudelines.md` Section 8): one path answers "where should this go, and does that count as a visit," the other answers "what is the current state of this link."
+**Design decision — metadata retrieval must not count as a click.** AF-08 ("record an access event each time a short URL is resolved") is scoped to *resolution for redirect purposes*. If the metadata endpoint also recorded an access event, an owner checking their own link's status would silently inflate their own click count (AF-09), which would be a correctness bug in analytics, not a feature. The resolver service used by redirect (`IShortUrlResolverService`) and the read path used by metadata are therefore kept as separate `Application`-layer operations rather than one shared "get and count" method — consistent with Single Responsibility (`coding-guidelines.md` Section 8): one path answers "where should this go, and does that count as a visit," the other answers "what is the current state of this link."
 
 ```csharp
 public sealed record ShortUrlMetadataResponse(

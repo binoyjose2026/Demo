@@ -1,7 +1,7 @@
 # DB Design — MVP (v3)
 
 **Status:** As-built. Documents the schema actually created by the applied EF Core migration, not an aspirational design.
-**Consistent with:** `UrlShortner/global/guidelines/data-design-guidelines.md`.
+**Consistent with:** `UrlShortener/engineering-standards/guidelines/data-design-guidelines.md`.
 **DB file:** `src/db/urlshortner.db` (SQLite), created by `dotnet ef database update` and re-applied automatically on every app startup via `AppDbContext.Database.Migrate()`.
 
 ---
@@ -56,7 +56,7 @@ CREATE UNIQUE INDEX "IX_ShortUrl_Code" ON "ShortUrls" ("Code");
 
 ## 5. Short-code generation approach (why the schema needs no more than `Code` + a unique index)
 
-This MVP uses the **v1 "random base62 (7 chars) + collision retry against `IX_ShortUrl_Code`"** approach (`UrlShortner.Infrastructure.ShortUrls.RandomBase62ShortCodeGenerator` + the retry loop in `UrlShortner.Application.ShortUrls.ShortUrlService`), **not** the v2 pre-allocated-ID-block extreme-scale approach in `documentation/02-design/v2/design/considerations/01-create-path-extreme-scalability.md` — that approach would require additional schema (an ID-block allocation table) that is unwarranted at this MVP's scale. It remains the documented upgrade path if this system needs to scale past what a single-writer SQLite file + collision retry can support (data-design-guidelines.md §1's SQLite trade-offs).
+This MVP uses the **v1 "random base62 (7 chars) + collision retry against `IX_ShortUrl_Code`"** approach (`UrlShortener.Infrastructure.ShortUrls.RandomBase62ShortCodeGenerator` + the retry loop in `UrlShortener.Application.ShortUrls.ShortUrlService`), **not** the v2 pre-allocated-ID-block extreme-scale approach in `documentation/02-design/v2/design/considerations/01-create-path-extreme-scalability.md` — that approach would require additional schema (an ID-block allocation table) that is unwarranted at this MVP's scale. It remains the documented upgrade path if this system needs to scale past what a single-writer SQLite file + collision retry can support (data-design-guidelines.md §1's SQLite trade-offs).
 
 ## 6. Caching
 

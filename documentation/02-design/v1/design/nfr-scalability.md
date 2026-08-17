@@ -2,7 +2,7 @@
 
 **Layer:** Cross-cutting non-functional concern
 **Traces to:** ANFR-05 (redirect shall be low-latency; redirect traffic significantly exceeds create traffic), ANFR-06 (system shall scale to handle high-volume read/redirect throughput), ANFR-01 (redirect path shall be highly available)
-**Consistent with:** `UrlShortner/global/guidelines/design-guidelines.md` (layered architecture, Repository pattern, Decorator pattern catalog entry), `UrlShortner/global/guidelines/data-design-guidelines.md` (SQLite as the standard embedded database and its documented trade-offs)
+**Consistent with:** `UrlShortener/engineering-standards/guidelines/design-guidelines.md` (layered architecture, Repository pattern, Decorator pattern catalog entry), `UrlShortener/engineering-standards/guidelines/data-design-guidelines.md` (SQLite as the standard embedded database and its documented trade-offs)
 
 ---
 

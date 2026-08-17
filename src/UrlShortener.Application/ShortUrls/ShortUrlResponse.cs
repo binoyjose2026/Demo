@@ -3,7 +3,7 @@ namespace UrlShortener.Application.ShortUrls;
 /// <summary>
 /// Response returned after a short URL is successfully created.
 /// Deliberately excludes persistence concerns (Id, RowVersion, IsDeleted/DeletedAtUtc) --
-/// see: global/guidelines/design-guidelines.md §3.
+/// see: engineering-standards/guidelines/design-guidelines.md §3.
 /// </summary>
 public sealed class ShortUrlResponse
 {

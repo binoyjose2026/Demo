@@ -5,7 +5,7 @@ namespace UrlShortener.Domain.Repositories;
 /// <summary>
 /// Entity-specific repository for <see cref="ShortUrl"/>, adding exactly the two
 /// lookups the create and fetch use cases need beyond generic CRUD.
-/// See: global/guidelines/design-guidelines.md §2, documentation/02-design/v1/design/fn-create.md §11,
+/// See: engineering-standards/guidelines/design-guidelines.md §2, documentation/02-design/v1/design/fn-create.md §11,
 /// documentation/02-design/v1/design/fn-fetch.md §5.
 /// </summary>
 public interface IShortUrlRepository : IRepository<ShortUrl>

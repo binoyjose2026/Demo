@@ -4,7 +4,7 @@
 **Status:** Draft
 **Scope:** End-to-end design of the "create a short URL" use case only. Companion documents (not duplicated here): `fn-fetch.md` (metadata retrieval / redirect), `fn-analytics.md` (click tracking/reporting), and the non-functional design documents in this same `02-design/v1/design/` folder — in particular the **security design document** (malicious/phishing domain checks, rate limiting, abuse policy) which this document references but does not restate.
 
-This document follows the layered architecture, SOLID principles, and EF Core/SQLite data conventions fixed in `UrlShortner/global/guidelines/design-guidelines.md`, `coding-giudelines.md`, and `data-design-guidelines.md`. It does not introduce any pattern not already listed in the Design Pattern Catalog (design-guidelines.md §8).
+This document follows the layered architecture, SOLID principles, and EF Core/SQLite data conventions fixed in `UrlShortener/engineering-standards/guidelines/design-guidelines.md`, `coding-guidelines.md`, and `data-design-guidelines.md`. It does not introduce any pattern not already listed in the Design Pattern Catalog (design-guidelines.md §8).
 
 ---
 
@@ -60,16 +60,16 @@ HTTP POST /api/short-urls
 [Api]  201 Created, Location: /api/short-urls/{code}, body: ShortUrlResponse
 ```
 
-Each numbered step below is a guard-clause-style check (coding-giudelines.md §6) — the first failing step short-circuits the pipeline and returns immediately; no step after a failure runs.
+Each numbered step below is a guard-clause-style check (coding-guidelines.md §6) — the first failing step short-circuits the pipeline and returns immediately; no step after a failure runs.
 
 ---
 
 ## 3. Request DTO
 
-Defined in `UrlShortner.Application` (design-guidelines.md §3 — DTOs at the boundary, never `Domain` entities):
+Defined in `UrlShortener.Application` (design-guidelines.md §3 — DTOs at the boundary, never `Domain` entities):
 
 ```csharp
-namespace UrlShortner.Application.ShortUrls;
+namespace UrlShortener.Application.ShortUrls;
 
 /// <summary>
 /// Request payload to create a new short URL. Bound directly from the HTTP request body.
@@ -99,7 +99,7 @@ Note: `CustomAlias` and `ExpiresAtUtc` are both opt-in fields left `null` by def
 Full authentication/authorization (login system, token validation, role enforcement) is explicitly **out of scope** for this PoC (Q2, out-of-scope §A). Building a real auth pipeline here would contradict that scope decision and would also be thrown away once real auth is chosen. Instead, the design introduces a narrow seam so the *rule* ("creation requires an identity") is honored in code today, without hard-coupling the `Application` layer to any specific auth technology:
 
 ```csharp
-namespace UrlShortner.Application.Common;
+namespace UrlShortener.Application.Common;
 
 /// <summary>
 /// Seam exposing the identity of the user making the current request.
@@ -120,7 +120,7 @@ public interface ICurrentUserContext
 ```
 
 - Interface lives in `Application` (it is a use-case-level concern, not a domain entity/repository concern).
-- The **placeholder implementation** lives in `UrlShortner.Api` (the composition root already implements Application-defined seams — e.g. reading a plain `X-User-Id`/`X-Department-Id` header, or returning a fixed mock identity) and is registered `Scoped` in `Program.cs`. It performs **no real authentication or token validation** — it exists solely so `IShortUrlService` has a non-null identity to persist, and so the seam can be swapped for a real implementation later (Open/Closed — design-guidelines.md §7) without touching `ShortUrlService`.
+- The **placeholder implementation** lives in `UrlShortener.Api` (the composition root already implements Application-defined seams — e.g. reading a plain `X-User-Id`/`X-Department-Id` header, or returning a fixed mock identity) and is registered `Scoped` in `Program.cs`. It performs **no real authentication or token validation** — it exists solely so `IShortUrlService` has a non-null identity to persist, and so the seam can be swapped for a real implementation later (Open/Closed — design-guidelines.md §7) without touching `ShortUrlService`.
 - `IShortUrlService.CreateAsync` calls `ICurrentUserContext.IsAuthenticated` as its **first** guard clause. If false, the request fails fast with `401 Unauthorized` — enforcing "must be logged in" (Q1) as a structural rule even though the identity behind it is currently mocked.
 - `ShortUrl.CreatedBy` (standard audit field, data-design-guidelines.md §3) is set from `UserId`; a `ShortUrl.OwnerDepartmentId` field records `DepartmentId` (Q3). **Enforcing** that ownership (e.g., rejecting cross-department edits) is out of scope (Q3, out-of-scope §A) and is not implemented here — only the data capture is.
 
@@ -182,11 +182,11 @@ That approach is the simpler of the two standard options and would technically s
 ### Design placement (Strategy pattern, design-guidelines.md §8)
 
 ```csharp
-namespace UrlShortner.Domain.ShortUrls;
+namespace UrlShortener.Domain.ShortUrls;
 
 /// <summary>
 /// Strategy for producing a candidate short code. Implementations are swappable via DI
-/// without changing ShortUrlService (Open/Closed — coding-giudelines.md §8).
+/// without changing ShortUrlService (Open/Closed — coding-guidelines.md §8).
 /// </summary>
 public interface IShortCodeGenerator
 {
@@ -197,7 +197,7 @@ public interface IShortCodeGenerator
 
 - Interface: `Domain` (peer to `IRepository<T>` — a domain-level abstraction consumed by `Application`).
 - Implementation (`RandomBase62ShortCodeGenerator`): `Infrastructure`, registered **Transient** (design-guidelines.md §6 lists exactly this as its Transient example) — it is stateless and cheap to construct.
-- The **retry-against-persistence loop** lives in `ShortUrlService` (Application), not inside the generator itself — the generator's single responsibility (coding-giudelines.md §8, SRP) is "produce one candidate"; whether a candidate is acceptable is a persistence-aware concern the generator has no business knowing about.
+- The **retry-against-persistence loop** lives in `ShortUrlService` (Application), not inside the generator itself — the generator's single responsibility (coding-guidelines.md §8, SRP) is "produce one candidate"; whether a candidate is acceptable is a persistence-aware concern the generator has no business knowing about.
 
 ```csharp
 // Application/ShortUrls/ShortUrlService.cs (excerpt)
@@ -320,7 +320,7 @@ public async Task<ShortUrlResponse> CreateAsync(CreateShortUrlRequest request, C
 ## 12. Response DTO
 
 ```csharp
-namespace UrlShortner.Application.ShortUrls;
+namespace UrlShortener.Application.ShortUrls;
 
 /// <summary>
 /// Response returned after a short URL is successfully created.
@@ -375,4 +375,4 @@ Per this project's convention of calling out trade-offs rather than hiding them:
 
 1. **No real authentication is implemented.** `ICurrentUserContext` is a seam with a placeholder implementation (§4). This is a deliberate, scope-driven exception (Q2), not an oversight — the *rule* is honored structurally; the *mechanism* is deferred.
 2. **Ownership (department-level group) is captured but not enforced.** `OwnerDepartmentId` is written on every `ShortUrl` at creation time so the data model is ready for authorization later, but no check in this flow restricts who may act on a link based on it (Q3, out-of-scope §A).
-3. **All numeric limits in this document are placeholders**: 2048-char URL length is confirmed (Q14); alias length bounds, the 5-attempt collision-retry budget, the 7-character code length, and the 365-day expiration cap are engineering judgment pending real usage data, consistent with how Q9/Q13 are already flagged as placeholders in the in-scope decisions. They are implemented as named constants/`IOptions<T>` (never magic numbers, per coding-giudelines.md §4) specifically so they can be tuned without a design change.
+3. **All numeric limits in this document are placeholders**: 2048-char URL length is confirmed (Q14); alias length bounds, the 5-attempt collision-retry budget, the 7-character code length, and the 365-day expiration cap are engineering judgment pending real usage data, consistent with how Q9/Q13 are already flagged as placeholders in the in-scope decisions. They are implemented as named constants/`IOptions<T>` (never magic numbers, per coding-guidelines.md §4) specifically so they can be tuned without a design change.

@@ -7,7 +7,7 @@ namespace UrlShortener.Application;
 
 /// <summary>
 /// Application-layer DI registration, called from Program.cs so the composition root
-/// stays a short list of per-layer calls. See: global/guidelines/design-guidelines.md §6.
+/// stays a short list of per-layer calls. See: engineering-standards/guidelines/design-guidelines.md §6.
 /// </summary>
 public static class ApplicationServiceCollectionExtensions
 {

@@ -3,7 +3,7 @@ namespace UrlShortener.Common.Guards;
 /// <summary>
 /// Small, stateless guard-clause helpers shared across layers. Contains no business
 /// logic and depends on nothing else in the solution.
-/// See: global/guidelines/design-guidelines.md §1 (Common project responsibilities).
+/// See: engineering-standards/guidelines/design-guidelines.md §1 (Common project responsibilities).
 /// </summary>
 public static class Guard
 {

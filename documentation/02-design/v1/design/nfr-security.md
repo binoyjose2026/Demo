@@ -1,8 +1,8 @@
 # Security Design — URL Shortener (v1)
 
 **Layer:** Non-functional / cross-cutting concern
-**Applies to:** `UrlShortner.Api`, `UrlShortner.Application`, `UrlShortner.Infrastructure`
-**Traces to:** ANFR-07, ANFR-08, ANFR-09 (`requirement.app.non-functional.md`); Q1, Q2, Q13, Q14, Q16, Q17, Q18, Q33 (`00-getting-started/in-scope/01-summary.md`); Q2, Q3, Q17, Q18, Q19 (`00-getting-started/out-of-scope/01-summary.md`); Section 10 of `coding-giudelines.md`; Section 4 of `design-guidelines.md` (middleware pipeline)
+**Applies to:** `UrlShortener.Api`, `UrlShortener.Application`, `UrlShortener.Infrastructure`
+**Traces to:** ANFR-07, ANFR-08, ANFR-09 (`requirement.app.non-functional.md`); Q1, Q2, Q13, Q14, Q16, Q17, Q18, Q33 (`00-getting-started/in-scope/01-summary.md`); Q2, Q3, Q17, Q18, Q19 (`00-getting-started/out-of-scope/01-summary.md`); Section 10 of `coding-guidelines.md`; Section 4 of `design-guidelines.md` (middleware pipeline)
 
 ---
 
@@ -43,7 +43,7 @@ This document covers only what is **in scope for v1** per the requirement decisi
 | T6 | **PII leakage via click logs** | Storing raw IP addresses or other identifying data in click logs creates a privacy liability with no corresponding product requirement. | PII-safe logging design (§6). |
 | T7 | **Credential/secret leakage** | Hardcoded connection strings or keys committed to source control. | Secrets handling (§7). |
 | T8 | **Transport interception / downgrade** | Traffic (including any future auth tokens) sent over plain HTTP. | HTTPS enforcement (§8). |
-| T9 | **Standard web vulnerabilities** (XSS on the branded expired/removed-link page, injection, unhandled-exception information disclosure) | The branded message page (Q10) renders link-related data; any templating there is an XSS surface if not encoded. | Covered by the standard ASP.NET Core middleware stack (§9) plus coding-guideline output-encoding/parameterized-query rules (`coding-giudelines.md` §10), not re-derived here. |
+| T9 | **Standard web vulnerabilities** (XSS on the branded expired/removed-link page, injection, unhandled-exception information disclosure) | The branded message page (Q10) renders link-related data; any templating there is an XSS surface if not encoded. | Covered by the standard ASP.NET Core middleware stack (§9) plus coding-guideline output-encoding/parameterized-query rules (`coding-guidelines.md` §10), not re-derived here. |
 
 **Out of scope, called out explicitly (not silently ignored):**
 
@@ -56,7 +56,7 @@ This document covers only what is **in scope for v1** per the requirement decisi
 
 ## 3. Input Validation
 
-All validation happens at the `Application` layer boundary (a validator invoked from the create-link use case), consistent with `coding-giudelines.md` §10 ("validate all external input... at the boundary before acting on it") and `design-guidelines.md` §3 (thin controllers, DTOs at the boundary). Controllers never accept a URL and act on it without passing through this validator first.
+All validation happens at the `Application` layer boundary (a validator invoked from the create-link use case), consistent with `coding-guidelines.md` §10 ("validate all external input... at the boundary before acting on it") and `design-guidelines.md` §3 (thin controllers, DTOs at the boundary). Controllers never accept a URL and act on it without passing through this validator first.
 
 ### 3.1 Scheme allowlist
 
@@ -192,7 +192,7 @@ Traces to Q33.
 
 ## 7. Secrets & Connection-String Handling
 
-Directly enforces `coding-giudelines.md` §10.
+Directly enforces `coding-guidelines.md` §10.
 
 - **No hardcoded secrets, connection strings, or API keys in source** — this applies to the SQLite connection string, and to any credentials the `ExternalMaliciousUrlChecker` (§4) needs for a third-party reputation API.
 - Configuration is layered per standard ASP.NET Core convention:
@@ -203,12 +203,12 @@ Directly enforces `coding-giudelines.md` §10.
 - Accessed exclusively through `IConfiguration` / the **Options Pattern** (`IOptions<T>`, already standardized in `design-guidelines.md` §8), never `Environment.GetEnvironmentVariable` calls scattered through the codebase.
 
 ```csharp
-// Good — matches coding-giudelines.md §10 exactly
+// Good — matches coding-guidelines.md §10 exactly
 services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
 ```
 
-- `.gitignore` must exclude any local secrets file (`appsettings.Development.json` if it ever holds real secrets, `secrets.json`) — verified as part of source-control hygiene (`coding-giudelines.md` §12), not re-specified here.
+- `.gitignore` must exclude any local secrets file (`appsettings.Development.json` if it ever holds real secrets, `secrets.json`) — verified as part of source-control hygiene (`coding-guidelines.md` §12), not re-specified here.
 
 ---
 
@@ -225,7 +225,7 @@ services.AddDbContext<AppDbContext>(options =>
 
 Per `design-guidelines.md` §4, the following are fixed as **placeholders establishing pipeline shape and order** — full implementation matures alongside the rest of the API, consistent with how that document already treats this pipeline:
 
-1. **Global exception-handling middleware** — converts unhandled exceptions to `ProblemDetails`; critically, this prevents stack traces/internal details leaking to callers (a T9-class information-disclosure risk), per `coding-giudelines.md` §6 ("exception messages... free of sensitive data").
+1. **Global exception-handling middleware** — converts unhandled exceptions to `ProblemDetails`; critically, this prevents stack traces/internal details leaking to callers (a T9-class information-disclosure risk), per `coding-guidelines.md` §6 ("exception messages... free of sensitive data").
 2. **Correlation-ID / request logging middleware** — every request gets a correlation ID, enabling security incident investigation (e.g., tracing an abuse pattern across the rate-limit/creation/redirect path) without needing to log PII to do it (consistent with §6 above).
 3. **HTTPS redirection / HSTS** — see §8; sits ahead of authentication in the pipeline so no credential-bearing request is ever processed over plain HTTP.
 4. **Authentication middleware** (`UseAuthentication`) — see §10; registered as a placeholder now, wired to a concrete scheme later.

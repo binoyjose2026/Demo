@@ -4,7 +4,7 @@ namespace UrlShortener.Domain.Repositories;
 
 /// <summary>
 /// Generic CRUD abstraction over an <see cref="AuditableEntity"/>-derived type.
-/// See: global/guidelines/design-guidelines.md §2 (Repository pattern).
+/// See: engineering-standards/guidelines/design-guidelines.md §2 (Repository pattern).
 /// </summary>
 public interface IRepository<T> where T : AuditableEntity
 {

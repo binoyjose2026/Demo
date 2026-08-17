@@ -4,7 +4,7 @@ namespace UrlShortener.Application.ShortUrls;
 
 /// <summary>
 /// Request payload to create a new short URL (AF-01). Bound directly from the HTTP request body.
-/// DTO at the boundary -- never the Domain entity. See: global/guidelines/design-guidelines.md §3.
+/// DTO at the boundary -- never the Domain entity. See: engineering-standards/guidelines/design-guidelines.md §3.
 /// </summary>
 public sealed class CreateShortUrlRequest
 {

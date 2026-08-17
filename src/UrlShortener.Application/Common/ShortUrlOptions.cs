@@ -4,7 +4,7 @@ namespace UrlShortener.Application.Common;
 
 /// <summary>
 /// Strongly-typed configuration for building the fully-qualified short URL returned
-/// from create (AF-01). Options pattern per global/guidelines/design-guidelines.md §8,
+/// from create (AF-01). Options pattern per engineering-standards/guidelines/design-guidelines.md §8,
 /// bound from appsettings.json ("ShortUrl" section) instead of a hardcoded/magic string.
 ///
 /// Item 7 (startup config validation): the data annotations below are enforced via

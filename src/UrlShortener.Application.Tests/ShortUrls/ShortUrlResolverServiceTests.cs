@@ -10,7 +10,7 @@ namespace UrlShortener.Application.Tests.ShortUrls;
 
 /// <summary>
 /// Unit tests for <see cref="ShortUrlResolverService"/> (AF-02, AF-06) with the repository
-/// and cache mocked -- no real database. Naming/AAA per coding-giudelines.md §9.
+/// and cache mocked -- no real database. Naming/AAA per coding-guidelines.md §9.
 /// </summary>
 public class ShortUrlResolverServiceTests
 {

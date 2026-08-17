@@ -1,8 +1,8 @@
 # Integration Testing Design
 
 **Non-functional concern:** Testability / Quality Assurance
-**Applies to:** `UrlShortner.Api` (host), exercising `Application`, `Infrastructure`, and `Domain` together through the real ASP.NET Core pipeline.
-**Consistent with:** [Coding Guidelines §9 Testing Conventions](../../../../global/guidelines/coding-giudelines.md), [Data Design Guidelines §1, §8](../../../../global/guidelines/data-design-guidelines.md), [Design Guidelines §3–§5](../../../../global/guidelines/design-guidelines.md).
+**Applies to:** `UrlShortener.Api` (host), exercising `Application`, `Infrastructure`, and `Domain` together through the real ASP.NET Core pipeline.
+**Consistent with:** [Coding Guidelines §9 Testing Conventions](../../../../engineering-standards/guidelines/coding-guidelines.md), [Data Design Guidelines §1, §8](../../../../engineering-standards/guidelines/data-design-guidelines.md), [Design Guidelines §3–§5](../../../../engineering-standards/guidelines/design-guidelines.md).
 
 ---
 
@@ -10,7 +10,7 @@
 
 Unit tests (see the companion unit testing document, `nfr-unit-testing.md`) verify a single class's logic in isolation with its dependencies faked. Integration tests exist for a different, non-overlapping purpose: **prove that the pieces are wired together correctly** — DI registrations resolve, middleware runs in the right order, MVC filters fire, routing matches, EF Core mappings/migrations are valid against a real SQLite schema, and a real HTTP request produces the response contract a client actually receives.
 
-This document does not re-test business-rule branches already covered by unit tests; it tests the *seams* between layers described in the [Design Guidelines](../../../../global/guidelines/design-guidelines.md) — Api → Application → Infrastructure → Domain — end to end.
+This document does not re-test business-rule branches already covered by unit tests; it tests the *seams* between layers described in the [Design Guidelines](../../../../engineering-standards/guidelines/design-guidelines.md) — Api → Application → Infrastructure → Domain — end to end.
 
 ---
 
@@ -18,7 +18,7 @@ This document does not re-test business-rule branches already covered by unit te
 
 - Every integration test suite boots the application in-process using ASP.NET Core's `WebApplicationFactory<Program>` (from `Microsoft.AspNetCore.Mvc.Testing`), which hosts the app on an in-memory `TestServer`.
 - This runs the **full real pipeline** as configured in `Program.cs`: the global exception-handling middleware, correlation-ID/logging middleware, authentication/authorization middleware, MVC action/exception/authorization/result filters (Design Guidelines §4–§5), routing, model binding, controllers, DI container, and EF Core — nothing here is mocked or bypassed. This is the entire point of an integration test versus a unit test: no layer is replaced except the one described in §3 below (the database).
-- A single custom factory, `UrlShortnerWebApplicationFactory : WebApplicationFactory<Program>`, is shared across a test class via `IClassFixture<T>` (xUnit) so the host starts once per test class, not once per test — keeping suite runtime reasonable while each individual test still gets an isolated database (§3).
+- A single custom factory, `UrlShortenerWebApplicationFactory : WebApplicationFactory<Program>`, is shared across a test class via `IClassFixture<T>` (xUnit) so the host starts once per test class, not once per test — keeping suite runtime reasonable while each individual test still gets an isolated database (§3).
 - `factory.CreateClient()` returns a real `HttpClient` making real HTTP requests against the in-memory server — tests assert on actual status codes, headers, and JSON bodies, exactly as an external caller would observe them.
 
 ---
@@ -29,7 +29,7 @@ This document does not re-test business-rule branches already covered by unit te
 
 **Each test class gets its own private, ephemeral SQLite database, created fresh and migrated at factory start-up, and disposed at the end of the test class.**
 
-Implementation: inside `UrlShortnerWebApplicationFactory.ConfigureWebHost`, remove the app's registered `AppDbContext`/`DbContextOptions<AppDbContext>` service descriptors and re-register `AppDbContext` against a private connection:
+Implementation: inside `UrlShortenerWebApplicationFactory.ConfigureWebHost`, remove the app's registered `AppDbContext`/`DbContextOptions<AppDbContext>` service descriptors and re-register `AppDbContext` against a private connection:
 
 - **Default / preferred:** an **in-memory SQLite connection** (`Microsoft.Data.Sqlite`, `DataSource=:memory:`) opened once and kept open for the lifetime of the factory (SQLite's in-memory database is destroyed the moment its one connection closes, so the `SqliteConnection` instance itself — not a connection string — is what's passed to `UseSqlite(connection)`). This is the fastest option and requires no disk cleanup.
 - **Alternative, when a test specifically needs real file-backed SQLite behavior** (e.g., verifying file-locking/concurrency edge cases called out in Data Design Guidelines §1's SQLite trade-offs, or testing `Database.Migrate()` against an actual file): a **temp-file SQLite database** created under the OS temp directory with a unique GUID-based file name per test class, deleted in the factory's `Dispose`/teardown.
@@ -111,11 +111,11 @@ Integration tests complement, not duplicate, `nfr-unit-testing.md`: unit tests i
 Follows the same naming (`MethodName_Scenario_ExpectedBehavior`) and AAA structure standardized in Coding Guidelines §9, applied here to an end-to-end flow rather than a single method.
 
 ```csharp
-public class ShortUrlsEndpointTests : IClassFixture<UrlShortnerWebApplicationFactory>
+public class ShortUrlsEndpointTests : IClassFixture<UrlShortenerWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public ShortUrlsEndpointTests(UrlShortnerWebApplicationFactory factory)
+    public ShortUrlsEndpointTests(UrlShortenerWebApplicationFactory factory)
     {
         // Arrange (shared): real in-process pipeline, no auto-redirect so the
         // redirect response itself can be asserted rather than followed.

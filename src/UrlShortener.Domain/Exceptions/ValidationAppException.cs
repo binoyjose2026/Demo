@@ -8,14 +8,14 @@ namespace UrlShortener.Domain.Exceptions;
 /// This is a Domain-level concern (a business invariant about what counts as a valid
 /// original URL), not Application-layer orchestration -- it has zero dependency on
 /// ASP.NET Core, EF Core, or any Application-layer type -- so it lives in
-/// <c>UrlShortener.Domain</c> per global/guidelines/design-guidelines.md §1.
+/// <c>UrlShortener.Domain</c> per engineering-standards/guidelines/design-guidelines.md §1.
 ///
 /// Left unsealed (rather than one generic exception doing double duty for every failure
 /// reason) so each concrete validation failure gets its own distinct, specific type --
 /// see <see cref="MissingUrlException"/>, <see cref="MalformedUrlException"/>,
 /// <see cref="UnsupportedUrlSchemeException"/>, <see cref="UrlTooLongException"/>.
 /// Mapped to 400 (ValidationProblemDetails) by the global exception-handling middleware
-/// in UrlShortener.Api -- see global/guidelines/design-guidelines.md §4. Because the
+/// in UrlShortener.Api -- see engineering-standards/guidelines/design-guidelines.md §4. Because the
 /// mapping switches on this base type, every subclass is mapped automatically without
 /// the handler needing to know about each one individually (Open/Closed).
 /// </summary>

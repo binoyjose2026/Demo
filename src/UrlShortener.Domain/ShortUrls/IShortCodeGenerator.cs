@@ -3,7 +3,7 @@ namespace UrlShortener.Domain.ShortUrls;
 /// <summary>
 /// Strategy for producing a candidate short code (AF-04). Implementations are swappable
 /// via DI without changing the calling application service (Open/Closed).
-/// See: global/guidelines/design-guidelines.md §8 (Strategy pattern),
+/// See: engineering-standards/guidelines/design-guidelines.md §8 (Strategy pattern),
 /// documentation/02-design/v1/design/fn-create.md §6.
 ///
 /// MVP decision: this project uses the v1 "random base62 + collision retry" approach

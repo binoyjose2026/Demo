@@ -2,7 +2,7 @@
 
 **Layer:** Cross-cutting (Api, Application, Infrastructure)
 **Traceability:** ANFR-01 (redirect availability), ANFR-02 (stable resolution), ANFR-03 (durability), ANFR-04 (graceful degradation) — see `requirement.app.non-functional.md`. Scope decisions from `00-getting-started/in-scope/01-summary.md` (Q7, Q35) and `00-getting-started/out-of-scope/01-summary.md` (Q35–Q37).
-**Consistent with:** `UrlShortner/global/guidelines/design-guidelines.md`, `UrlShortner/global/guidelines/data-design-guidelines.md`, `UrlShortner/global/guidelines/coding-giudelines.md`.
+**Consistent with:** `UrlShortener/engineering-standards/guidelines/design-guidelines.md`, `UrlShortener/engineering-standards/guidelines/data-design-guidelines.md`, `UrlShortener/engineering-standards/guidelines/coding-guidelines.md`.
 
 ---
 
@@ -29,7 +29,7 @@ Per the in-scope decision at Q7, the original long URL behind a short code is **
 - The `Application` layer exposes no `UpdateOriginalUrlAsync`/`PATCH` operation on `ShortUrl` for the `OriginalUrl` property. The only writes permitted after creation are **lifecycle** writes (deactivation, expiry) which change *availability* of the mapping, never its *target*.
 
 ```csharp
-// UrlShortner.Domain
+// UrlShortener.Domain
 public class ShortUrl : AuditableEntity
 {
     public string Code { get; set; } = string.Empty;
@@ -153,11 +153,11 @@ Kept consistent with the project's `ProblemDetails`-first API design instinct (`
 ```
 
 - HTTP status: `200 OK` when all checks pass, `503 Service Unavailable` when any tagged check reports `Unhealthy` (the default `HealthCheckOptions` behavior) — the conventional signal a load balancer/orchestrator already knows how to interpret without custom logic.
-- **Exception:** the response body is intentionally minimal (no exception details/stack traces), per the coding guidelines' rule that error output must be free of sensitive data (`coding-giudelines.md` §6) — a health endpoint is often unauthenticated and internet-reachable, so it must not leak internals.
+- **Exception:** the response body is intentionally minimal (no exception details/stack traces), per the coding guidelines' rule that error output must be free of sensitive data (`coding-guidelines.md` §6) — a health endpoint is often unauthenticated and internet-reachable, so it must not leak internals.
 
 ### 4.4 Placement
 
-- Registered in `UrlShortner.Api` (`Program.cs`), consistent with `design-guidelines.md` §1 — `Api` is the only executable/composition-root project.
+- Registered in `UrlShortener.Api` (`Program.cs`), consistent with `design-guidelines.md` §1 — `Api` is the only executable/composition-root project.
 - Not versioned under `/api/v1/...` — health endpoints are an infrastructure/ops concern, not a business API surface, so they stay at a stable, unversioned path.
 
 ---
@@ -187,7 +187,7 @@ public async Task DeactivateAsync(long shortUrlId, CancellationToken cancellatio
     catch (DbUpdateConcurrencyException ex)
     {
         // Expected control-flow outcome of a real race, not an unexpected fault —
-        // surfaced as a 409 Conflict ProblemDetails response (coding-giudelines.md §6:
+        // surfaced as a 409 Conflict ProblemDetails response (coding-guidelines.md §6:
         // prefer a result/exception distinction between "expected failure path" and
         // "truly unexpected condition"; a concurrency conflict is the former here
         // because it is application-detectable and actionable by the caller).

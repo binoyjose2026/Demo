@@ -91,7 +91,7 @@ The routing decision must live entirely behind `IShortUrlRepository`, exactly as
 
 ```csharp
 // Infrastructure/Sharding/IShardResolver.cs — new seam, Infrastructure-only
-namespace UrlShortner.Infrastructure.Sharding;
+namespace UrlShortener.Infrastructure.Sharding;
 
 /// <summary>
 /// Resolves which physical shard owns a given short code, via a consistent-hash ring

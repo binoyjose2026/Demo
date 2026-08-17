@@ -7,7 +7,7 @@ namespace UrlShortener.Infrastructure.Repositories;
 
 /// <summary>
 /// Generic EF Core-backed implementation of <see cref="IRepository{T}"/>.
-/// See: global/guidelines/design-guidelines.md §2.
+/// See: engineering-standards/guidelines/design-guidelines.md §2.
 /// </summary>
 public class Repository<T> : IRepository<T> where T : AuditableEntity
 {

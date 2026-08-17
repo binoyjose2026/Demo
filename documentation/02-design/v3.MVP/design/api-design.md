@@ -1,6 +1,6 @@
 # API Design — MVP (v3)
 
-**Status:** As-built. Documents the two actual endpoints implemented in `UrlShortner.Api`, not an aspirational design.
+**Status:** As-built. Documents the two actual endpoints implemented in `UrlShortener.Api`, not an aspirational design.
 **Scope:** Create + fetch/redirect only — see `documentation/02-design/v3.MVP/agents/agent-prompt.md`. No custom alias, no expiration, no analytics/click-tracking, no metadata endpoint, no moderation check, no real caching/event broker. Each omission is a documented, deliberate deferral (see §4) with a matching code comment at the point it would plug in — not a silent gap. **Post-hardening update (§6):** auth and rate limiting are no longer un-wired placeholders in code — real ASP.NET Core primitives (`[Authorize]`, `[EnableRateLimiting]`) are now on the create action, backed by an intentionally permissive/no-op policy each; they remain "not really enforcing anything" in spirit (an effectively-unlimited rate limit, an always-succeeding auth policy), just no longer decorative.
 **Companion docs:** `db-design.md` (schema), `api-project-structure.md` (project layout), `exception-and-logging-strategy.md` (Serilog setup, the exception-type hierarchy, the full exception -> HTTP status mapping, and the edge cases now explicitly handled with tests). Full pre-MVP designs this is trimmed from: `documentation/02-design/v1/design/fn-create.md`, `fn-fetch.md`.
 
@@ -8,7 +8,7 @@
 
 ## 1. `POST /api/v1/short-urls` — Create (AF-01, AF-03, AF-04)
 
-Implemented in `UrlShortner.Api.Controllers.ShortUrlsController.CreateAsync`.
+Implemented in `UrlShortener.Api.Controllers.ShortUrlsController.CreateAsync`.
 
 **Post-hardening update:** the route is now versioned (`/api/v1/short-urls`, was `/api/short-urls`) — see §6.7. The action also now carries `[EnableRateLimiting("CreatePolicy")]`, `[Authorize(Policy = "Mvp-Bypass")]`, and an `Idempotency-Key`-reading `IdempotencyKeyFilter` — see §6.3-6.5 for what each actually does (all three are intentionally permissive/no-op placeholders, not enforcement).
 
@@ -36,7 +36,7 @@ Idempotency-Key: 5f8c1e2a-9b3d-4e7f-9a1c-2d6b7e4f0a11
 | 2 | Scheme is `http` or `https` (case-insensitive) | Q14, ANFR-07 |
 | 3 | Length ≤ 2048 characters (`UrlValidationConstants.MaxOriginalUrlLength`) | Q14 |
 
-A failure at any step throws a distinct `UrlShortner.Domain.Exceptions.ValidationAppException` subclass -- `MissingUrlException`, `MalformedUrlException`, or `UrlTooLongException` for rules 1-3 respectively (each one a specific, single-purpose type rather than one generic exception doing double duty) -- translated by `GlobalExceptionHandler` into a `400` `ValidationProblemDetails` response. See `exception-and-logging-strategy.md` §3-4 for the full exception hierarchy and status mapping, including `UnsupportedUrlSchemeException` (rule 2's disallowed-scheme case, e.g. `javascript:`/`ftp:`).
+A failure at any step throws a distinct `UrlShortener.Domain.Exceptions.ValidationAppException` subclass -- `MissingUrlException`, `MalformedUrlException`, or `UrlTooLongException` for rules 1-3 respectively (each one a specific, single-purpose type rather than one generic exception doing double duty) -- translated by `GlobalExceptionHandler` into a `400` `ValidationProblemDetails` response. See `exception-and-logging-strategy.md` §3-4 for the full exception hierarchy and status mapping, including `UnsupportedUrlSchemeException` (rule 2's disallowed-scheme case, e.g. `javascript:`/`ftp:`).
 
 ### Short-code generation (AF-04, ANFR-08)
 
@@ -65,7 +65,7 @@ Random 7-character base62 candidate (`RandomBase62ShortCodeGenerator`), checked 
 
 ## 2. `GET /{code}` — Fetch / Redirect (AF-02, AF-06)
 
-Implemented in `UrlShortner.Api.Controllers.RedirectController.RedirectAsync`.
+Implemented in `UrlShortener.Api.Controllers.RedirectController.RedirectAsync`.
 
 **Design exception (per `fn-fetch.md` §3, carried into this MVP unchanged):** this route lives at the application root, not under `/api/...`, because the whole point of a short link is a short path.
 
@@ -77,7 +77,7 @@ GET /{code}
 
 ### Behavior
 
-0. **Post-hardening addition:** a `code` segment containing any character outside the base62 alphabet (`RandomBase62ShortCodeGenerator`'s own alphabet, now also exposed as `UrlShortner.Domain.ShortUrls.ShortCodeValidationConstants`) is rejected with `400 Bad Request` immediately, before any cache/DB round trip — see §6.6. This runs first, in `RedirectController` itself.
+0. **Post-hardening addition:** a `code` segment containing any character outside the base62 alphabet (`RandomBase62ShortCodeGenerator`'s own alphabet, now also exposed as `UrlShortener.Domain.ShortUrls.ShortCodeValidationConstants`) is rejected with `400 Bad Request` immediately, before any cache/DB round trip — see §6.6. This runs first, in `RedirectController` itself.
 0a. An empty/whitespace-only `code` segment short-circuits to not-found immediately (logged at Warning), without a cache/DB round trip. (Unreachable via this route today — `[HttpGet("/{code}")]` requires a non-empty segment — but still exercised directly by `ShortUrlResolverServiceTests`.)
 1. `IShortUrlResolverService.ResolveAsync(code)` checks the (no-op) cache, then `IShortUrlRepository.GetByCodeAsync(code)`.
 2. Found → `302 Found` with `Location: <OriginalUrl>`, logged at Information (short code only, never the destination URL, per `exception-and-logging-strategy.md` §2). **302, not 301** — deliberately, so every request re-hits the server rather than being cached client-side; see `fn-fetch.md` §10 for the full rationale (matters most once expiry/deactivation/analytics exist, all out of scope for this MVP, but the 302 choice is made now so it doesn't need revisiting later).
@@ -106,7 +106,7 @@ GET /not-a-real-code!
 
 ## 3. Standard error shape
 
-Every non-2xx response is `ProblemDetails`/`ValidationProblemDetails` (`application/problem+json`), per `UrlShortner/global/guidelines/design-guidelines.md` §3 — produced by `AddProblemDetails()` for framework-level failures (bad routing, model binding) and by `GlobalExceptionHandler` (an `IExceptionHandler`) for `ValidationAppException` (and its subclasses)/`ShortCodeGenerationException`/any other unhandled exception. See `exception-and-logging-strategy.md` for the full exception-type hierarchy, the exception → HTTP status mapping, what gets logged where (Serilog), and the edge cases now explicitly handled with tests.
+Every non-2xx response is `ProblemDetails`/`ValidationProblemDetails` (`application/problem+json`), per `UrlShortener/engineering-standards/guidelines/design-guidelines.md` §3 — produced by `AddProblemDetails()` for framework-level failures (bad routing, model binding) and by `GlobalExceptionHandler` (an `IExceptionHandler`) for `ValidationAppException` (and its subclasses)/`ShortCodeGenerationException`/any other unhandled exception. See `exception-and-logging-strategy.md` for the full exception-type hierarchy, the exception → HTTP status mapping, what gets logged where (Serilog), and the edge cases now explicitly handled with tests.
 
 ## 4. Deliberately out of scope for this MVP (documented, with a pointer to the full design)
 
@@ -128,8 +128,8 @@ Every non-2xx response is `ProblemDetails`/`ValidationProblemDetails` (`applicat
 
 ## 5. Testing
 
-- **Unit** (`UrlShortner.Application.Tests`, Moq + xUnit): `ShortUrlServiceTests` (valid create; missing/malformed/disallowed-scheme (`ftp:`, `javascript:`)/over-length URL, each asserting its specific exception type; collision retry succeeds; retry budget exhausted) and `ShortUrlResolverServiceTests` (resolved, not-found, empty/whitespace code short-circuits without querying cache/repository, cache-write-on-miss). 15 tests, all passing.
-- **Integration** (`UrlShortner.IntegrationTests`, `WebApplicationFactory<Program>` + private in-memory SQLite): create → fetch/redirect happy path; missing/malformed/disallowed-scheme/over-length URL → `ValidationProblemDetails`; unknown/valid-format code, empty code segment, and malformed (invalid-alphabet) code segment → `404`/`400`; plus a dedicated `RowVersion` optimistic-concurrency test against `AppDbContext` directly (item 17, no update endpoint exists in this MVP to exercise it through the API). 10 tests, all passing.
+- **Unit** (`UrlShortener.Application.Tests`, Moq + xUnit): `ShortUrlServiceTests` (valid create; missing/malformed/disallowed-scheme (`ftp:`, `javascript:`)/over-length URL, each asserting its specific exception type; collision retry succeeds; retry budget exhausted) and `ShortUrlResolverServiceTests` (resolved, not-found, empty/whitespace code short-circuits without querying cache/repository, cache-write-on-miss). 15 tests, all passing.
+- **Integration** (`UrlShortener.IntegrationTests`, `WebApplicationFactory<Program>` + private in-memory SQLite): create → fetch/redirect happy path; missing/malformed/disallowed-scheme/over-length URL → `ValidationProblemDetails`; unknown/valid-format code, empty code segment, and malformed (invalid-alphabet) code segment → `404`/`400`; plus a dedicated `RowVersion` optimistic-concurrency test against `AppDbContext` directly (item 17, no update endpoint exists in this MVP to exercise it through the API). 10 tests, all passing.
 - See `exception-and-logging-strategy.md` §5 for the full edge-case-to-test mapping.
 
 ## 6. Post-MVP hardening additions
@@ -138,7 +138,7 @@ The sections above describe the original create/fetch-only MVP surface. This sec
 
 ### 6.1 Swagger/OpenAPI
 
-`Swashbuckle.AspNetCore` (pinned to the 6.x line — the 7.x+/10.x lines moved `OpenApiInfo` to a different `Microsoft.OpenApi` namespace shape not worth chasing for this MVP). XML doc comments (`UrlShortner.Api.csproj`'s `GenerateDocumentationFile`) feed Swagger's operation/schema descriptions from the controllers' real `<summary>`/`<param>`/`<response>` comments. UI mapped only in `Development`, at `/swagger`.
+`Swashbuckle.AspNetCore` (pinned to the 6.x line — the 7.x+/10.x lines moved `OpenApiInfo` to a different `Microsoft.OpenApi` namespace shape not worth chasing for this MVP). XML doc comments (`UrlShortener.Api.csproj`'s `GenerateDocumentationFile`) feed Swagger's operation/schema descriptions from the controllers' real `<summary>`/`<param>`/`<response>` comments. UI mapped only in `Development`, at `/swagger`.
 
 ### 6.2 Health checks, request logging, OpenTelemetry
 
@@ -160,7 +160,7 @@ The sections above describe the original create/fetch-only MVP surface. This sec
 
 ### 6.6 Short-code format validation on redirect
 
-`RedirectController.RedirectAsync` now rejects a `code` segment containing any character outside the base62 alphabet (`UrlShortner.Domain.ShortUrls.ShortCodeValidationConstants`) with `400 Bad Request`, before any cache/DB round trip — see §2 above.
+`RedirectController.RedirectAsync` now rejects a `code` segment containing any character outside the base62 alphabet (`UrlShortener.Domain.ShortUrls.ShortCodeValidationConstants`) with `400 Bad Request`, before any cache/DB round trip — see §2 above.
 
 ### 6.7 API versioning
 
@@ -176,12 +176,12 @@ The sections above describe the original create/fetch-only MVP surface. This sec
 
 ### 6.10 NullKafka event publisher seam
 
-`IShortUrlEventPublisher` (`UrlShortner.Domain.ShortUrls`) / `NullShortUrlEventPublisher` (`UrlShortner.Infrastructure.Messaging`) mirror the `IShortUrlCache`/`NullShortUrlCache` pattern exactly. `ShortUrlService.CreateAsync` calls `PublishUrlCreatedAsync` fire-and-forget after the entity commits — a publish failure is caught and logged, never surfaced to the caller. The Null implementation contains a commented-out block showing the real `Confluent.Kafka` `IProducer<string,string>.ProduceAsync(...)` call it would make. Full design: `documentation/02-design/v2/design/considerations/05-kafka-comparison.md`.
+`IShortUrlEventPublisher` (`UrlShortener.Domain.ShortUrls`) / `NullShortUrlEventPublisher` (`UrlShortener.Infrastructure.Messaging`) mirror the `IShortUrlCache`/`NullShortUrlCache` pattern exactly. `ShortUrlService.CreateAsync` calls `PublishUrlCreatedAsync` fire-and-forget after the entity commits — a publish failure is caught and logged, never surfaced to the caller. The Null implementation contains a commented-out block showing the real `Confluent.Kafka` `IProducer<string,string>.ProduceAsync(...)` call it would make. Full design: `documentation/02-design/v2/design/considerations/05-kafka-comparison.md`.
 
 ### 6.11 Startup config validation
 
 `ShortUrlOptions` (`ShortUrl:BaseUrl`) is now bound via `AddOptions<ShortUrlOptions>().Bind(...).ValidateDataAnnotations().ValidateOnStart()` with `[Required]`/`[Url]` attributes — a missing/malformed config value now fails fast at boot instead of producing a malformed short URL the first time `CreateAsync` runs.
 
-### 6.12 `UrlShortner.LoadTests`
+### 6.12 `UrlShortener.LoadTests`
 
 A new NBomber-based console project (not an xUnit project — excluded from `dotnet test` automatically) with two scenarios: hammering `POST /api/v1/short-urls` and `GET /{code}`, against a configurable base URL (`LOADTEST_BASE_URL`, default `http://localhost:5236`). Build-only for this task — not run/executed, not wired into CI. See `api-project-structure.md` §6 and the project's own `Program.cs` header comment for why measuring against the v2 extreme-scale numbers would require the actual v2 infrastructure to be meaningful.

@@ -60,7 +60,7 @@ Capture is constrained by the in-scope privacy decision (**Q33**): no raw IP add
 Following the data design guidelines, every table — including this one — gets the standard `Id`/audit/`RowVersion`/soft-delete column set via `AuditableEntity`, even though an access-event log is naturally append-only.
 
 ```csharp
-namespace UrlShortner.Domain.Entities;
+namespace UrlShortener.Domain.Entities;
 
 /// <summary>
 /// Represents a single successful resolution of a short URL, recorded as a
@@ -146,7 +146,7 @@ GET /api/short-urls/{code}/analytics
 Only the fields AF-09/AF-10 literally call for — no trend/device/geo breakdown fields, per Section 1.1.
 
 ```csharp
-namespace UrlShortner.Application.Analytics;
+namespace UrlShortener.Application.Analytics;
 
 /// <summary>
 /// Analytics summary for a single short URL (AF-10). Intentionally limited to

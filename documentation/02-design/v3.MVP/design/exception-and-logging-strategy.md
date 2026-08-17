@@ -10,7 +10,7 @@ logging rule this design follows).
 
 ## 1. Serilog setup
 
-- **Packages** (`UrlShortner.Api.csproj`): `Serilog.AspNetCore` 9.0.0, `Serilog.Sinks.Console`
+- **Packages** (`UrlShortener.Api.csproj`): `Serilog.AspNetCore` 9.0.0, `Serilog.Sinks.Console`
   6.0.0, `Serilog.Settings.Configuration` 9.0.0 (pinned to the `9.x` line, not the newest
   `10.x`, so the transitive `Microsoft.Extensions.*` versions stay aligned with this
   project's `net9.0`/ASP.NET Core 9 target instead of pulling in .NET 10 abstractions).
@@ -28,7 +28,7 @@ logging rule this design follows).
   - `MinimumLevel.Override`: `Microsoft`, `Microsoft.AspNetCore`, and `System` all at
     `Warning`, so framework-internal chatter (routing, DI, Kestrel connection noise)
     doesn't drown out the application's own events.
-  - `Enrich.FromLogContext` + a static `Application: UrlShortner.Api` property on every
+  - `Enrich.FromLogContext` + a static `Application: UrlShortener.Api` property on every
     log line.
   - Extension point (documented, not built -- consistent with this project's "deferred
     with a pointer" convention): swapping the Console sink's plain-text `outputTemplate`
@@ -60,7 +60,7 @@ default enrichers do not log the remote IP either.
 
 ## 3. Exception types
 
-`ValidationAppException` (`UrlShortner.Domain.Exceptions`) is now an unsealed base type
+`ValidationAppException` (`UrlShortener.Domain.Exceptions`) is now an unsealed base type
 with one distinct subclass per real failure reason, instead of one generic exception
 doing double duty for every validation rule:
 
@@ -78,7 +78,7 @@ MVP) that `ValidationAppException` already exposed, so `GlobalExceptionHandler`'
 one of them to a `ValidationProblemDetails` response without a case per subtype
 (Open/Closed) -- see §4.
 
-**Not-found is deliberately NOT an exception.** Per `coding-giudelines.md` §6 ("prefer a
+**Not-found is deliberately NOT an exception.** Per `coding-guidelines.md` §6 ("prefer a
 return code/Result pattern... for expected failure paths that are part of normal control
 flow"), an unknown/removed short code is an expected outcome of a redirect lookup, not an
 exceptional one -- `ShortUrlResolverService.ResolveAsync` returns
@@ -100,7 +100,7 @@ Every 500-class response's `ProblemDetails.Detail` is now a fixed, safe string r
 than `exception.Message` (a change from the pre-hardening version of this handler, which
 echoed `exception.Message` verbatim for every status including unexpected 500s). The full
 exception -- message and stack trace -- is still logged server-side (§2), just never
-placed in the response body, per `coding-giudelines.md` §6 and this handler's own
+placed in the response body, per `coding-guidelines.md` §6 and this handler's own
 long-standing contract for the two exception types it always knew about.
 
 ## 5. Edge cases explicitly handled (with tests)
