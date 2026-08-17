@@ -40,7 +40,7 @@ delivered design. It isn't — v3 is what was actually built and shipped.
 
 The implementation lives in **`src/`** — an ASP.NET Core (.NET 9) solution,
 `src/UrlShortener.sln`, following the layered structure documented in
-[`documentation/02-design/v3.MVP/design/api-project-structure.md`](documentation/02-design/v3.MVP/design/api-project-structure.md).
+[`documentation/02-design/v3-mvp/design/api-project-structure.md`](documentation/02-design/v3-mvp/design/api-project-structure.md).
 See that folder's own `README.md` for how to run it locally.
 
 ## Repository layout

@@ -93,7 +93,7 @@ scalability benchmark.
 
 ## Solution layout
 
-See `documentation/02-design/v3.MVP/design/api-project-structure.md` for the full,
+See `documentation/02-design/v3-mvp/design/api-project-structure.md` for the full,
 as-built project structure and dependency-direction diagram. Briefly:
 
 | Project | Responsibility |

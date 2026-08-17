@@ -23,7 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 // appsettings.{Environment}.json) via Serilog.Settings.Configuration -- console sink,
 // structured message templates (see ShortUrlService/ShortUrlResolverService/
 // GlobalExceptionHandler), Information by default with Microsoft/System noise reduced to
-// Warning. See: documentation/02-design/v3.MVP/design/exception-and-logging-strategy.md.
+// Warning. See: documentation/02-design/v3-mvp/design/exception-and-logging-strategy.md.
 builder.Host.UseSerilog((context, services, loggerConfiguration) =>
     loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)

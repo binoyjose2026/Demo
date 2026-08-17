@@ -46,10 +46,10 @@ Client provided basic requirements. Instead of iterating through clarification c
 Best read via the [browsable site](../../../client-deliverables/website/index.html) (key-decisions summary + full detail per topic); raw source lives in [`../../02-design/v2/design/considerations/`](../../02-design/v2/design/considerations/).
 
 ### v3 MVP — what was actually built and shipped
-- [Database design](../../02-design/v3.MVP/design/db-design.md)
-- [API project structure (layered solution)](../../02-design/v3.MVP/design/api-project-structure.md)
-- [API design (the two shipped endpoints)](../../02-design/v3.MVP/design/api-design.md)
-- [Exception & logging strategy (Serilog, exception hierarchy)](../../02-design/v3.MVP/design/exception-and-logging-strategy.md)
+- [Database design](../../02-design/v3-mvp/design/db-design.md)
+- [API project structure (layered solution)](../../02-design/v3-mvp/design/api-project-structure.md)
+- [API design (the two shipped endpoints)](../../02-design/v3-mvp/design/api-design.md)
+- [Exception & logging strategy (Serilog, exception hierarchy)](../../02-design/v3-mvp/design/exception-and-logging-strategy.md)
 - [Working code](../../../src/) — solution file: `../../../src/UrlShortener.sln`
 - [Test run logs (build/test/run output captured here)](../../../src/test/logs/)
 

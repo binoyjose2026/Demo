@@ -8,7 +8,7 @@
 
 ## 1. Scope
 
-One table: `ShortUrls`. This MVP is scoped to create + fetch only (see `documentation/02-design/v3.MVP/agents/agent-prompt.md`), so no `AccessEvents`/analytics table, no `Departments`/ownership table, etc. — those are out of scope for this phase (see `documentation/02-design/v1/design/fn-analytics.md`, `fn-create.md` §4).
+One table: `ShortUrls`. This MVP is scoped to create + fetch only (see `documentation/02-design/v3-mvp/agents/agent-prompt.md`), so no `AccessEvents`/analytics table, no `Departments`/ownership table, etc. — those are out of scope for this phase (see `documentation/02-design/v1/design/fn-analytics.md`, `fn-create.md` §4).
 
 ## 2. Schema — `ShortUrls`
 
@@ -60,4 +60,4 @@ This MVP uses the **v1 "random base62 (7 chars) + collision retry against `IX_Sh
 
 ## 6. Caching
 
-No cache table/column — caching is a pure read-through seam (`IShortUrlCache`, implemented today by the no-op `NullShortUrlCache`), not a schema concern. See `documentation/02-design/v3.MVP/design/api-design.md` and `documentation/02-design/v2/design/considerations/07-redis-caching-and-invalidation.md` for the deferred real-cache design.
+No cache table/column — caching is a pure read-through seam (`IShortUrlCache`, implemented today by the no-op `NullShortUrlCache`), not a schema concern. See `documentation/02-design/v3-mvp/design/api-design.md` and `documentation/02-design/v2/design/considerations/07-redis-caching-and-invalidation.md` for the deferred real-cache design.

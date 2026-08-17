@@ -131,7 +131,7 @@ Verified via actual `dotnet add reference` calls:
 - `context.Database.Migrate()` runs on startup (skipped under the `IntegrationTest` environment, where `UrlShortenerWebApplicationFactory` migrates its own private in-memory connection instead).
 - `public partial class Program { }` is appended so `WebApplicationFactory<Program>` in the separate `IntegrationTests` project can reference the top-level-statement-generated `Program` class.
 
-## 5. What was deliberately not scaffolded (see `documentation/02-design/v3.MVP/agents/agent-prompt.md`)
+## 5. What was deliberately not scaffolded (see `documentation/02-design/v3-mvp/agents/agent-prompt.md`)
 
 No `UrlShortener.Domain.Tests` project (nfr-unit-testing.md §2 lists it, but `UrlShortener.Domain` still has no *behavioral* logic to unit-test in isolation — the `ShortUrl` entity is a plain data holder, `UrlValidationConstants` is a literal, and the `Exceptions` types (§1a) are simple data-carrying classes with no branching logic of their own; every one of them is already exercised indirectly through `ShortUrlServiceTests`/`ShortUrlResolverServiceTests`. Trivial to add a dedicated project once an actual domain-level *method* with branching logic exists to test). No analytics module — see `fn-analytics.md` and the per-feature "deliberately deferred" comments in `ShortUrlService.cs`/`ShortUrlResolverService.cs`. Auth and rate-limiting are no longer un-wired placeholders — see §6.
 
