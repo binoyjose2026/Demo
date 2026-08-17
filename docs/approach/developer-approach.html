@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engineering Approach — URL Shortener</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-raised: #f7f8fa;
+  --bg-sidebar: #f7f8fa;
+  --bg-code: #f1f2f5;
+  --bg-callout: #fff8ec;
+  --bg-callout-border: #e8c987;
+  --bg-verdict: #eef7f0;
+  --bg-verdict-border: #a8d5b5;
+  --bg-flip: #fdeeee;
+  --bg-flip-border: #e3a8a8;
+  --text: #1a1d23;
+  --text-muted: #5b6270;
+  --text-faint: #8990a0;
+  --border: #e3e5ea;
+  --border-strong: #c9cdd6;
+  --accent: #3454d1;
+  --accent-soft: #eaeefc;
+  --accent-text: #2a41a8;
+  --code-text: #b8093f;
+  --shadow: 0 1px 3px rgba(20,24,34,0.06), 0 1px 2px rgba(20,24,34,0.08);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Helvetica, Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161c;
+    --bg-raised: #1b1e26;
+    --bg-sidebar: #191b22;
+    --bg-code: #20232c;
+    --bg-callout: #2a2410;
+    --bg-callout-border: #6b5a1f;
+    --bg-verdict: #12261a;
+    --bg-verdict-border: #2e6b45;
+    --bg-flip: #2a1616;
+    --bg-flip-border: #7a3a3a;
+    --text: #e7e9ee;
+    --text-muted: #a3aab8;
+    --text-faint: #767e8c;
+    --border: #2a2e38;
+    --border-strong: #3a3f4c;
+    --accent: #7c96f5;
+    --accent-soft: #202844;
+    --accent-text: #a8b8fa;
+    --code-text: #ff8fae;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14161c;
+  --bg-raised: #1b1e26;
+  --bg-sidebar: #191b22;
+  --bg-code: #20232c;
+  --bg-callout: #2a2410;
+  --bg-callout-border: #6b5a1f;
+  --bg-verdict: #12261a;
+  --bg-verdict-border: #2e6b45;
+  --bg-flip: #2a1616;
+  --bg-flip-border: #7a3a3a;
+  --text: #e7e9ee;
+  --text-muted: #a3aab8;
+  --text-faint: #767e8c;
+  --border: #2a2e38;
+  --border-strong: #3a3f4c;
+  --accent: #7c96f5;
+  --accent-soft: #202844;
+  --accent-text: #a8b8fa;
+  --code-text: #ff8fae;
+  --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Top nav ---------- */
+.topbar {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0.9rem 2.5rem;
+}
+.nav-toplink {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.32rem 0.6rem;
+  margin-left: -0.6rem;
+  border-radius: 6px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-toplink:hover { background: var(--accent-soft); color: var(--accent-text); }
+
+/* ---------- Main content ---------- */
+.main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 3.5rem 2.5rem 8rem;
+}
+
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.015em; color: var(--text); }
+h1 { font-size: 2.25rem; margin: 0 0 0.6rem; line-height: 1.15; }
+h2 {
+  font-size: 1.55rem;
+  margin: 3.5rem 0 0.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--border);
+}
+section:first-of-type h2 { border-top: none; padding-top: 0; }
+.cat-desc { color: var(--text-muted); font-size: 0.95rem; margin: 0 0 1.8rem; max-width: 68ch; }
+
+h3 {
+  font-size: 1.2rem;
+  margin: 2.6rem 0 0.2rem;
+}
+h4 { font-size: 0.98rem; margin: 1.6rem 0 0.5rem; color: var(--text); }
+
+p { margin: 0.85rem 0; color: var(--text); }
+.lede { font-size: 1.1rem; color: var(--text-muted); max-width: 70ch; }
+
+a { color: var(--accent-text); }
+
+.doc-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem 1.9rem 1.9rem;
+  margin: 1.6rem 0 2.6rem;
+  scroll-margin-top: 1.5rem;
+}
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.badge.adopt { color: #1c6b3c; border-color: var(--bg-verdict-border); background: var(--bg-verdict); }
+.badge.reject { color: #9c3a3a; border-color: var(--bg-flip-border); background: var(--bg-flip); }
+.badge.conditional { color: #8a6a12; border-color: var(--bg-callout-border); background: var(--bg-callout); }
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 1.4rem 0 0.4rem;
+}
+
+.verdict-box {
+  background: var(--bg-verdict);
+  border: 1px solid var(--bg-verdict-border);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin: 0.6rem 0 1rem;
+  font-size: 0.95rem;
+}
+.verdict-box strong { color: var(--text); }
+
+.callout {
+  background: var(--bg-callout);
+  border: 1px solid var(--bg-callout-border);
+  border-left: 4px solid var(--bg-callout-border);
+  border-radius: 6px;
+  padding: 0.85rem 1.1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.callout .callout-title {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8a6a12;
+  margin-bottom: 0.3rem;
+}
+
+.flip-box {
+  background: var(--bg-flip);
+  border: 1px solid var(--bg-flip-border);
+  border-left: 4px solid var(--bg-flip-border);
+  border-radius: 6px;
+  padding: 0.85rem 1.1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.flip-box .callout-title {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9c3a3a;
+  margin-bottom: 0.3rem;
+}
+
+ul, ol { margin: 0.7rem 0; padding-left: 1.4rem; }
+li { margin: 0.35rem 0; color: var(--text); }
+li::marker { color: var(--text-faint); }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--bg-code);
+  color: var(--code-text);
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+pre code {
+  background: none;
+  color: var(--text);
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+.table-wrap { overflow-x: auto; margin: 1.1rem 0; border: 1px solid var(--border); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.87rem; min-width: 480px; }
+thead th {
+  background: var(--bg-code);
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--accent-soft); }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.9rem;
+  margin: 1.3rem 0 0.5rem;
+}
+.stat-tile {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.9rem 1.05rem;
+}
+.stat-tile .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin-bottom: 0.25rem; }
+.stat-tile .stat-value { font-size: 1.15rem; font-weight: 700; color: var(--text); font-family: var(--font-mono); }
+
+hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0; }
+
+.top-hero {
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2.6rem;
+}
+.eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
+  margin-bottom: 0.7rem;
+}
+
+.footer-note {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 880px) {
+  .topbar-inner { padding: 0.85rem 1.25rem; }
+  .main { padding: 2rem 1.25rem 5rem; }
+  .doc-card { padding: 1.25rem 1.25rem 1.4rem; }
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.3rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="nav-toplink" href="../website/index.html">&larr; v2 Scalability Design Review</a>
+  </div>
+</div>
+
+<main class="main">
+
+<div class="top-hero">
+  <div class="eyebrow">Engineering Approach</div>
+  <h1>Engineering Approach</h1>
+  <p class="lede">Why this project was built the way it was — a reflection on the sequencing, written for anyone reviewing the finished work.</p>
+</div>
+
+<section id="shape">
+<h2 style="border-top:none; padding-top:0; margin-top:0;">The overall shape of the approach</h2>
+<p>The shape of this project is deliberately lopsided: a large amount of AI-assisted architectural exploration happened <strong>before</strong> almost any code was written, and what shipped afterward is a small, intentionally non-scalable MVP. That is not the order you'd get by accident, and it isn't a sign the implementation was rushed or under-baked. It's a conscious choice about where the effort actually belongs. Code that solves a problem the system doesn't have yet is wasted code; reasoning about a problem the system might eventually have is cheap, especially with AI assistance to run many independent explorations in parallel. So the investment went where it compounds — into the thinking — and the implementation was kept to exactly what a working prototype needs, no more.</p>
+</section>
+
+<section id="design-phase">
+<h2>What the design phase actually covered</h2>
+<p class="cat-desc">Three stages, each narrowing the problem before the next one started.</p>
+
+<h3>Requirements</h3>
+<p>The starting point was a raw brief, which got turned into formal functional and non-functional requirement documents. Rather than treating those documents as settled, they were explicitly pressure-tested from a product-owner's point of view: a dedicated review pass surfaced roughly <strong>37 open product questions</strong> — who owns a link, what its lifecycle looks like, what limits and abuse policy should apply, what the business model even is, what compliance obligations exist, what SLAs are implied. Those questions got answered deliberately, before anything downstream assumed a particular answer, and the resulting decisions locked the actual v1 scope. That sequencing matters: it's the difference between building against a guess and building against a scope that was actually interrogated first.</p>
+
+<h3>v1 design</h3>
+<p>With scope locked, the v1 design pass worked out a full architecture for a working system: a layered solution structure, the repository pattern, SQLite plus EF Core as the embedded datastore, and SOLID-principle-driven design throughout. That design covered security, scalability, performance, resilience, reliability and availability, unit testing, and integration testing — plus the three core functional flows the product actually needs: create, fetch, and analytics. This is the architecture a straightforward, correctly-built v1 service would follow.</p>
+
+<h3>v2 design — "what would extreme scale actually require"</h3>
+<p>The third stage asked a different, deliberately broader question: not "what does v1 need," but <strong>what would this system have to become if it actually had to handle real growth</strong> — millions of creates a day scaling toward tens of millions, tens of millions of fetches a day scaling toward hundreds of millions, over a five-year horizon. That review produced <strong>29 documents</strong> spanning data partitioning, Elasticsearch versus alternatives for analytics storage, caching and CDN strategy, messaging, the full resilience-pattern family (timeout, retry, backoff, jitter, circuit breaker, bulkhead), security at scale, Kubernetes-based infrastructure, and forward-looking AI-pluggability. The full write-up, with the numbers and verdicts behind each decision, is at <a href="../website/index.html">the v2 Scalability Design Review</a>.</p>
+</section>
+
+<section id="nuance">
+<h2>The important nuance: v2 was a "what if," not a build list</h2>
+<p>It's worth being explicit about this, because it's easy to misread 29 documents of extreme-scale architecture as a to-do list. It wasn't. Every document in that review is framed as an exploration of what extreme scale <em>would require if it happened</em> — not a claim that v1's simpler choices were wrong for their context, and not an instruction to go build all of it now.</p>
+<p>It also wasn't a rubber stamp of whatever technology sounds impressive. Several of the v2 documents concluded that a popular, expected choice was actually <strong>not</strong> justified at the system's stated scale, and said so with real math instead of leaning on industry-standard advice:</p>
+
+<div class="doc-card">
+<div class="doc-meta"><span class="badge reject">Not adopted by default</span></div>
+<h4 style="margin-top:0;">Kafka</h4>
+<p>Worked out against this system's own five-year projection, the event-publishing throughput lands at roughly <strong>0.1–1% of a single Kafka broker's real capacity</strong>. Standing up a Kafka cluster to carry that little traffic is operational cost with no matching benefit, so a simpler managed queue was recommended instead — with Kafka named explicitly as the upgrade path if replay semantics or multiple independent consumers ever become a real need.</p>
+</div>
+
+<div class="doc-card">
+<div class="doc-meta"><span class="badge reject">Not adopted</span></div>
+<h4 style="margin-top:0;">Outbox pattern</h4>
+<p>Evaluated for the create flow's event publication and rejected, with the reasoning shown rather than asserted: the only durable write on that path is a single local database transaction with no broker involved, so the dual-write problem the Outbox pattern exists to solve was never actually present.</p>
+</div>
+
+<div class="doc-card">
+<div class="doc-meta"><span class="badge reject">Not adopted</span></div>
+<h4 style="margin-top:0;">Saga pattern</h4>
+<p>Also evaluated and also rejected for the create flow: create is one write to one database with one atomic commit, not a multi-service transaction, so there is nothing for a Saga to coordinate or compensate.</p>
+</div>
+
+<p>This is the actual evidence of engineering judgment on display in this project — not the volume of documents, but the willingness to reason from the system's real shape and real numbers, and to say "no, not this" about tools that are usually reached for by default. Resisting the reflexive pull toward the impressive-sounding option is harder than adopting it, and it's the part that's easy to skip if the goal is just to look thorough.</p>
+</section>
+
+<section id="mvp">
+<h2>Why the final shipped MVP (v3) is deliberately minimal and not scalable</h2>
+<p>What actually shipped scopes down to the two endpoints that matter for a working prototype — create and fetch — running on SQLite, with a null/no-op cache placeholder standing in for a real caching layer. This is explicitly not the extreme-scale architecture described in v2, and that gap is intentional, not an oversight.</p>
+<p>Building v2's infrastructure — sharded storage, Elasticsearch, a message broker, a full resilience-pattern stack, Kubernetes — for a prototype that doesn't carry that traffic would be premature engineering effort spent on a problem the system doesn't have yet. Knowing when <strong>not</strong> to build something is as much a part of engineering judgment as knowing how to build it.</p>
+<p>Rather than quietly dropping the enterprise-grade concerns v2 surfaced, the MVP code leaves them as clearly-commented, honest placeholders sitting at their exact plug-in points:</p>
+<ul>
+<li>A null Kafka event-publisher seam, with the real producer call left commented-out in place, ready to be swapped in.</li>
+<li>A rate-limiting policy that exists in the code path but is currently disabled.</li>
+<li>An authorization policy that is present but bypassed rather than silently omitted.</li>
+<li>An idempotency-key seam, matching the design already worked out in the v2 review, not yet wired to a real store.</li>
+</ul>
+<p>Each of these placeholders points back to the specific v2 document where the full design already exists, so the distance between what's built and what's been thought through is documented, not hidden. Anyone reading the code can see exactly what was deferred and why, and exactly where to pick it back up.</p>
+</section>
+
+<section id="throughline">
+<h2>The throughline</h2>
+<p>Most of the actual engineering value in this project is in the reasoning, not the code volume: decomposing the problem, pressure-testing assumptions instead of accepting them, and working through real trade-offs with real numbers rather than received wisdom. AI-assisted parallel exploration is what made it economical to do that reasoning this thoroughly — 29 independent documents, each demanding its own numbers and its own honest verdict — while still shipping a working, minimal, defensible prototype in the time actually available. The two halves depend on each other: the MVP is small because the thinking that justifies keeping it small was already done, and written down.</p>
+</section>
+
+<div class="footer-note">Engineering approach — companion note to the <a href="../website/index.html">v2 Scalability Design Review</a>.</div>
+
+</main>
+</body>
+</html>

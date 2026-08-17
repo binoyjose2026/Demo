@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL Shortener — v2 Scalability Design Review</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-raised: #f7f8fa;
+  --bg-sidebar: #f7f8fa;
+  --bg-code: #f1f2f5;
+  --bg-callout: #fff8ec;
+  --bg-callout-border: #e8c987;
+  --bg-verdict: #eef7f0;
+  --bg-verdict-border: #a8d5b5;
+  --bg-flip: #fdeeee;
+  --bg-flip-border: #e3a8a8;
+  --text: #1a1d23;
+  --text-muted: #5b6270;
+  --text-faint: #8990a0;
+  --border: #e3e5ea;
+  --border-strong: #c9cdd6;
+  --accent: #3454d1;
+  --accent-soft: #eaeefc;
+  --accent-text: #2a41a8;
+  --code-text: #b8093f;
+  --shadow: 0 1px 3px rgba(20,24,34,0.06), 0 1px 2px rgba(20,24,34,0.08);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Helvetica, Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161c;
+    --bg-raised: #1b1e26;
+    --bg-sidebar: #191b22;
+    --bg-code: #20232c;
+    --bg-callout: #2a2410;
+    --bg-callout-border: #6b5a1f;
+    --bg-verdict: #12261a;
+    --bg-verdict-border: #2e6b45;
+    --bg-flip: #2a1616;
+    --bg-flip-border: #7a3a3a;
+    --text: #e7e9ee;
+    --text-muted: #a3aab8;
+    --text-faint: #767e8c;
+    --border: #2a2e38;
+    --border-strong: #3a3f4c;
+    --accent: #7c96f5;
+    --accent-soft: #202844;
+    --accent-text: #a8b8fa;
+    --code-text: #ff8fae;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14161c;
+  --bg-raised: #1b1e26;
+  --bg-sidebar: #191b22;
+  --bg-code: #20232c;
+  --bg-callout: #2a2410;
+  --bg-callout-border: #6b5a1f;
+  --bg-verdict: #12261a;
+  --bg-verdict-border: #2e6b45;
+  --bg-flip: #2a1616;
+  --bg-flip-border: #7a3a3a;
+  --text: #e7e9ee;
+  --text-muted: #a3aab8;
+  --text-faint: #767e8c;
+  --border: #2a2e38;
+  --border-strong: #3a3f4c;
+  --accent: #7c96f5;
+  --accent-soft: #202844;
+  --accent-text: #a8b8fa;
+  --code-text: #ff8fae;
+  --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Layout shell ---------- */
+.shell { display: flex; min-height: 100vh; align-items: flex-start; }
+
+#nav-toggle { display: none; }
+
+.sidebar {
+  width: 300px;
+  flex: none;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1.75rem 1.25rem 3rem;
+}
+.sidebar::-webkit-scrollbar { width: 8px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+.brand {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.15rem;
+  color: var(--text);
+}
+.brand-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.4;
+}
+
+.nav-group { margin-bottom: 1.4rem; }
+.nav-group-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 0 0 0.5rem 0.1rem;
+}
+.nav-group ul { list-style: none; margin: 0; padding: 0; }
+.nav-group li { margin: 0; }
+.nav-group a {
+  display: block;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  padding: 0.32rem 0.5rem;
+  border-radius: 6px;
+  line-height: 1.35;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-group a:hover { background: var(--accent-soft); color: var(--accent-text); }
+.nav-group a .num {
+  display: inline-block;
+  min-width: 1.6em;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+}
+.nav-toplink {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.32rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.15rem;
+}
+.nav-toplink:hover { background: var(--accent-soft); color: var(--accent-text); }
+
+/* ---------- Main content ---------- */
+.main-wrap { flex: 1; min-width: 0; }
+.main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 3.5rem 2.5rem 8rem;
+}
+
+.mobile-bar { display: none; }
+
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.015em; color: var(--text); }
+h1 { font-size: 2.25rem; margin: 0 0 0.6rem; line-height: 1.15; }
+h2 {
+  font-size: 1.55rem;
+  margin: 3.5rem 0 0.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--border);
+}
+h2:first-of-type, section:first-child h2 { border-top: none; padding-top: 0; }
+.cat-desc { color: var(--text-muted); font-size: 0.95rem; margin: 0 0 1.8rem; max-width: 68ch; }
+
+h3 {
+  font-size: 1.2rem;
+  margin: 2.6rem 0 0.2rem;
+}
+.doc-card h3 { margin-top: 0; }
+h4 { font-size: 0.98rem; margin: 1.6rem 0 0.5rem; color: var(--text); }
+
+p { margin: 0.85rem 0; color: var(--text); }
+.lede { font-size: 1.1rem; color: var(--text-muted); max-width: 70ch; }
+
+a { color: var(--accent-text); }
+
+.doc-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem 1.9rem 1.9rem;
+  margin: 1.6rem 0 2.6rem;
+  scroll-margin-top: 1.5rem;
+}
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+.doc-num {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  background: var(--bg-code);
+  padding: 0.15rem 0.5rem;
+  border-radius: 5px;
+}
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.badge.adopt { color: #1c6b3c; border-color: var(--bg-verdict-border); background: var(--bg-verdict); }
+.badge.reject { color: #9c3a3a; border-color: var(--bg-flip-border); background: var(--bg-flip); }
+.badge.conditional { color: #8a6a12; border-color: var(--bg-callout-border); background: var(--bg-callout); }
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 1.4rem 0 0.4rem;
+}
+.doc-card .section-label:first-of-type { margin-top: 0.2rem; }
+
+.verdict-box {
+  background: var(--bg-verdict);
+  border: 1px solid var(--bg-verdict-border);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin: 0.6rem 0 1rem;
+  font-size: 0.95rem;
+}
+.verdict-box strong { color: var(--text); }
+
+.callout {
+  background: var(--bg-callout);
+  border: 1px solid var(--bg-callout-border);
+  border-left: 4px solid var(--bg-callout-border);
+  border-radius: 6px;
+  padding: 0.85rem 1.1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.callout .callout-title {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8a6a12;
+  margin-bottom: 0.3rem;
+}
+
+.flip-box {
+  background: var(--bg-flip);
+  border: 1px solid var(--bg-flip-border);
+  border-left: 4px solid var(--bg-flip-border);
+  border-radius: 6px;
+  padding: 0.85rem 1.1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.flip-box .callout-title {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9c3a3a;
+  margin-bottom: 0.3rem;
+}
+
+ul, ol { margin: 0.7rem 0; padding-left: 1.4rem; }
+li { margin: 0.35rem 0; color: var(--text); }
+li::marker { color: var(--text-faint); }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--bg-code);
+  color: var(--code-text);
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+pre code {
+  background: none;
+  color: var(--text);
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+.table-wrap { overflow-x: auto; margin: 1.1rem 0; border: 1px solid var(--border); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.87rem; min-width: 480px; }
+thead th {
+  background: var(--bg-code);
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--accent-soft); }
+
+.kd-table td:first-child, .kd-table th:first-child { font-weight: 600; white-space: nowrap; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.9rem;
+  margin: 1.3rem 0 0.5rem;
+}
+.stat-tile {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.9rem 1.05rem;
+}
+.stat-tile .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin-bottom: 0.25rem; }
+.stat-tile .stat-value { font-size: 1.15rem; font-weight: 700; color: var(--text); font-family: var(--font-mono); }
+
+hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0; }
+
+.top-hero {
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2.6rem;
+}
+.eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
+  margin-bottom: 0.7rem;
+}
+
+.footer-note {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 0.82rem;
+}
+
+/* Responsive */
+@media (max-width: 880px) {
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0;
+    height: 100vh;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow);
+    width: 82vw;
+    max-width: 320px;
+  }
+  #nav-toggle:checked ~ .shell .sidebar { transform: translateX(0); }
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0.85rem 1.25rem;
+  }
+  .mobile-bar label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem; height: 2.1rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text);
+    flex: none;
+  }
+  .mobile-bar .mobile-title { font-weight: 700; font-size: 0.92rem; }
+  .main { padding: 2rem 1.25rem 5rem; }
+  .doc-card { padding: 1.25rem 1.25rem 1.4rem; }
+  .nav-scrim {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,12,18,0.45);
+    z-index: 35;
+  }
+  #nav-toggle:checked ~ .shell .nav-scrim { display: block; }
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.3rem; }
+}
+@media (min-width: 881px) {
+  .mobile-bar { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<input type="checkbox" id="nav-toggle">
+<div class="mobile-bar">
+  <label for="nav-toggle">&#9776;</label>
+  <span class="mobile-title">v2 Scalability Review</span>
+</div>
+
+<div class="shell">
+<label class="nav-scrim" for="nav-toggle"></label>
+
+<nav class="sidebar" aria-label="Table of contents">
+  <div class="brand">URL Shortener</div>
+  <div class="brand-sub">v2 Architecture &amp; Scalability<br>Design Review</div>
+
+  <a class="nav-toplink" href="#overview">Overview &amp; Scale Assumptions</a>
+  <a class="nav-toplink" href="#key-decisions">Key Decisions at a Glance</a>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Create-Path &amp; Data Layer</div>
+    <ul>
+      <li><a href="#doc-01"><span class="num">01</span> Create-Path Extreme Scalability</a></li>
+      <li><a href="#doc-10"><span class="num">10</span> Database Partitioning / Sharding</a></li>
+      <li><a href="#doc-28"><span class="num">28</span> Short-Key Generation Survey</a></li>
+      <li><a href="#doc-11"><span class="num">11</span> Idempotency Keys</a></li>
+      <li><a href="#doc-20"><span class="num">20</span> Outbox Pattern</a></li>
+      <li><a href="#doc-29"><span class="num">29</span> Saga Pattern (Not Needed)</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Search &amp; Analytics Storage</div>
+    <ul>
+      <li><a href="#doc-03"><span class="num">03</span> Elasticsearch vs. SQL Server</a></li>
+      <li><a href="#doc-04"><span class="num">04</span> Elasticsearch vs. MongoDB</a></li>
+      <li><a href="#doc-08"><span class="num">08</span> Metadata Management</a></li>
+      <li><a href="#doc-24"><span class="num">24</span> Click-Stat Batching (Redis)</a></li>
+      <li><a href="#doc-25"><span class="num">25</span> Elasticsearch Bulk Indexing</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Caching &amp; Edge Delivery</div>
+    <ul>
+      <li><a href="#doc-06"><span class="num">06</span> Output Caching, BFF &amp; CDN</a></li>
+      <li><a href="#doc-07"><span class="num">07</span> Redis Caching &amp; Invalidation</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Messaging &amp; Async Processing</div>
+    <ul>
+      <li><a href="#doc-05"><span class="num">05</span> Kafka Comparison</a></li>
+      <li><a href="#doc-21"><span class="num">21</span> Background Job Hosting</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Resilience Patterns</div>
+    <ul>
+      <li><a href="#doc-12"><span class="num">12</span> Distributed Rate Limiting</a></li>
+      <li><a href="#doc-14"><span class="num">14</span> Timeout</a></li>
+      <li><a href="#doc-15"><span class="num">15</span> Retry</a></li>
+      <li><a href="#doc-16"><span class="num">16</span> Exponential Backoff</a></li>
+      <li><a href="#doc-17"><span class="num">17</span> Jitter</a></li>
+      <li><a href="#doc-18"><span class="num">18</span> Circuit Breaker</a></li>
+      <li><a href="#doc-19"><span class="num">19</span> Bulkhead Isolation</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Security</div>
+    <ul>
+      <li><a href="#doc-22"><span class="num">22</span> Reputation, Attack Surface &amp; AuthZ</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Observability</div>
+    <ul>
+      <li><a href="#doc-13"><span class="num">13</span> Observability at Scale</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Infrastructure &amp; Operations</div>
+    <ul>
+      <li><a href="#doc-26"><span class="num">26</span> Infrastructure Design (Edge → Data)</a></li>
+      <li><a href="#doc-27"><span class="num">27</span> DevOps — Out of Scope</a></li>
+    </ul>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Forward-Looking</div>
+    <ul>
+      <li><a href="#doc-23"><span class="num">23</span> AI Pluggability &amp; Vector Readiness</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="main-wrap">
+<main class="main">
+
+<div class="top-hero">
+  <div class="eyebrow">Design Review &middot; v2 &middot; Scalability</div>
+  <h1>URL Shortener — v2 Scalability Design Review</h1>
+  <p class="lede">A scoped, deep review of what it takes to run this C#/.NET 9 URL shortener at extreme scale — 27 numbered consideration documents covering the create path, storage, caching, messaging, resilience, security, infrastructure, and forward-looking AI readiness.</p>
+</div>
+
+<section id="overview">
+<h2 style="border-top:none; padding-top:0; margin-top:0;">Overview &amp; Scale Assumptions</h2>
+<p>This review is deliberately scoped to <strong>one topic: scalability</strong>. Security posture in general, cost, and team process are explicitly deferred to a later pass — scalability alone is a big enough topic to go deep on first. The review was commissioned against a specific, believable-but-not-hyperscale load target, chosen because the trade-offs at that scale actually matter — not a toy example, not a hyperscale fantasy.</p>
+
+<div class="summary-grid">
+  <div class="stat-tile"><div class="stat-label">Creates today</div><div class="stat-value">1,000,000 / day</div></div>
+  <div class="stat-tile"><div class="stat-label">Creates in 5 years</div><div class="stat-value">5,000,000 / day</div></div>
+  <div class="stat-tile"><div class="stat-label">Fetches today</div><div class="stat-value">10,000,000 / day</div></div>
+  <div class="stat-tile"><div class="stat-label">Fetches in 5 years</div><div class="stat-value">100,000,000 / day</div></div>
+</div>
+
+<p>That is roughly <strong>5x growth over 5 years</strong> on both sides — fetches always outweigh creates by an order of magnitude or more, because a link is created once and clicked many times. At the 5-year horizon, average sustained load works out to roughly <strong>58 creates/sec</strong> and <strong>~1,160 fetches/sec</strong>, with realistic peak multipliers of 5–10x pushing fetch bursts toward <strong>6,000–12,000/sec</strong>. Every numbered document in this review designs against that peak-load future, not the comfortable average.</p>
+
+<p>Every document below is explicitly framed as an architectural exploration — <em>what extreme scale would require</em> — not a claim that v1's simpler choices (SQLite, <code>IMemoryCache</code>, in-process channels) were mistakes for their context. Several documents conclude that a popular, "obvious" technology (Kafka, the Outbox pattern, the Saga pattern) is <strong>not</strong> justified at this system's actual numbers, and say so plainly with the math to back it up rather than defaulting to industry-standard advice.</p>
+</section>
+
+<section id="key-decisions">
+<h2>Key Decisions at a Glance</h2>
+<p class="cat-desc">The headline verdict from each of the 27 documents, before the detailed sections below. Read this first for the shape of the whole review; read the sections below for the numbers and trade-offs behind each verdict.</p>
+
+<div class="table-wrap">
+<table class="kd-table">
+<thead><tr><th>Topic</th><th>Decision</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Create-path scalability</td><td>Pre-allocated ID blocks (10K/instance) + reversible bit-mixing before base62 encoding</td><td>Eliminates collision risk by construction and cuts allocator contention ~4 orders of magnitude vs. per-request checks</td></tr>
+<tr><td>Database partitioning</td><td>Not needed at the start of the 5-year horizon; escalate via SQLite→server RDBMS→native partitioning→sharding only when triggered</td><td>A single well-tuned primary absorbs low-thousands of writes/sec; this review's own numbers land inside that envelope until late in the horizon</td></tr>
+<tr><td>Short-code generation</td><td>Pre-allocated ID blocks + bit-mixing confirmed as the winner across 7 surveyed approaches</td><td>Only option that is collision-free by construction, ANFR-08-compliant, and adds no external dependency</td></tr>
+<tr><td>Idempotency keys</td><td>Adopt — client-supplied <code>Idempotency-Key</code> header, Redis-backed, 24-hour TTL</td><td>Retry-with-backoff at scale makes duplicate creates a statistical certainty, not an edge case (~1,000–25,000/day unprotected)</td></tr>
+<tr><td>Outbox pattern</td><td><strong>Not adopted</strong> for the create path's <code>UrlCreated</code> event</td><td>The only durable write (the <code>ShortUrl</code> row) is already a single atomic local transaction; a lost event is a self-healing analytics nuisance, not data loss</td></tr>
+<tr><td>Saga pattern</td><td><strong>Not adopted</strong> — no multi-service transaction exists</td><td>Create is one write, one database, one atomic commit; failure means "nothing happened," not "something needs compensating"</td></tr>
+<tr><td>ES vs. SQL Server</td><td>Polyglot split — Elasticsearch for the click/analytics event store, SQL Server stays the relational system of record</td><td>Opposite workload shapes: append-only/aggregation-heavy vs. small/transactional/consistency-critical</td></tr>
+<tr><td>ES vs. MongoDB</td><td>Elasticsearch, conditionally — flips to MongoDB if the team is MongoDB-centric or analytics stays frozen at "count only"</td><td>ES's aggregation engine and ILM retention match the likely growth path (trends, device/referrer breakdowns) better than Mongo's general-purpose pipeline</td></tr>
+<tr><td>Metadata management</td><td>Structured metadata stays relational (same <code>ShortUrl</code> row); QR images (if built) go to object storage, never a DB blob</td><td>No new store needed for structured data; binary artifacts are regenerable, so object storage + lazy generation fits better</td></tr>
+<tr><td>Click-stat batching</td><td>Redis <code>HINCRBY</code> staging counter, flushed every 15s via time-bucketed keys</td><td>Cuts DB write round-trips by ~1,150x–12,000x vs. one <code>UPDATE</code> per click; approximate counts are an accepted trade-off</td></tr>
+<tr><td>Elasticsearch bulk indexing</td><td>Bulk API with a 1,000-doc / 1-second size-or-time flush trigger</td><td>Single-doc indexing needs ~1,150–12,150 calls/sec, far beyond the 20-slot ES bulkhead; bulk batching cuts call volume ~1,000x</td></tr>
+<tr><td>Output caching / BFF / CDN</td><td>Layered TTLs — 10s ASP.NET output cache, 30s Cloudflare edge cache, split redirect BFF from the management API</td><td>Deliberate, bounded exception to v1's "every fetch hits origin" rule; absorbs the large majority of 100M/day traffic before origin</td></tr>
+<tr><td>Redis caching &amp; invalidation</td><td>Managed Redis (clustered), 5-minute TTL backstop + active publish-on-write invalidation</td><td>Fixes per-instance cache staleness and hit-rate fragmentation that gets worse as fleet size grows</td></tr>
+<tr><td>Kafka</td><td><strong>Not adopted by default</strong> — managed queue (Azure Service Bus Topics) instead; Kafka named as an explicit upgrade path</td><td>~1,200 events/sec avg / ~12,000/sec peak is 0.1–1% of a single Kafka broker's capacity — throughput doesn't justify the operational cost</td></tr>
+<tr><td>Background job hosting</td><td>Split by workload shape — long-running Worker Service for continuous stream consumers, Azure Functions for scheduled/bursty jobs</td><td>A never-idle Consumption-plan function pays serverless premium 24/7; a nightly job on an always-on container wastes ~99% of its cost on idle time</td></tr>
+<tr><td>Distributed rate limiting</td><td>Redis-backed sliding-window counter (not token bucket), fail-closed on create / fail-open on redirect</td><td>In-memory limiters give up to N&times; the intended limit once the API is horizontally scaled; sliding window avoids boundary-burst gaming</td></tr>
+<tr><td>Timeout</td><td>Every outbound call gets an explicit, dependency-specific timeout (Redis 30ms, DB read 100ms, ES 2s, broker 5s)</td><td>A slow dependency is worse than a down one — it exhausts threads/connections instead of failing fast</td></tr>
+<tr><td>Retry</td><td>2–3 retries max, reads liberal / writes idempotency-gated, dependency-specific policy</td><td>Unbounded retry at fleet scale turns a partial outage into a self-inflicted denial-of-service</td></tr>
+<tr><td>Exponential backoff</td><td><code>100ms base &times; 2^n</code>, capped at 30s, uniform across dependencies</td><td>Prevents synchronized retry waves from re-overwhelming a dependency the instant it recovers</td></tr>
+<tr><td>Jitter</td><td>Decorrelated Jitter (not Full Jitter)</td><td>Avoids the "two small draws in a row" weakness of Full Jitter while still breaking fleet-wide lockstep retries</td></tr>
+<tr><td>Circuit breaker</td><td>Adopt per dependency — e.g. ES analytics: 50% failure ratio / 30s window / 30s break duration</td><td>Retry/backoff/jitter alone still pay full latency+load cost per request for an entire outage; breaker fails fast instead</td></tr>
+<tr><td>Bulkhead isolation</td><td>Per-dependency concurrency ceilings (redirect 200, create-write 50, ES 20, rate-limit Redis 50, moderation-check 10)</td><td>Without partitioning, a slow low-priority dependency (ES, moderation) can starve thread/connection capacity the redirect path needs</td></tr>
+<tr><td>Security at scale</td><td>Continuous re-scanning + automated fast takedown + centralized authorization in the Application layer before every store query</td><td>A constant false-negative rate on domain checks produces ~5,000 uncaught bad links/day at 5-year volume; new stores don't inherit row-level security automatically</td></tr>
+<tr><td>Observability</td><td>OpenTelemetry (traces/metrics/logs) + Grafana stack (Loki, Tempo, Mimir) — separate from the analytics Elasticsearch cluster</td><td>A single symptom now spans an API instance, a cache node, a broker, a consumer, and a search cluster — needs a request graph, not a log grep</td></tr>
+<tr><td>Infrastructure topology</td><td>Cloudflare CDN → Azure Front Door WAF → Azure Load Balancer → AKS (HPA + KEDA + Cluster Autoscaler) → managed PaaS data tier</td><td>Concrete, named Azure services for every layer the prompt asked for; single region + zone redundancy judged sufficient, not multi-region</td></tr>
+<tr><td>DevOps</td><td><strong>Explicitly out of scope</strong> for this review</td><td>A separate concern from system architecture; folding it in would dilute a review meant to stay finishable</td></tr>
+<tr><td>AI pluggability</td><td>Readiness only, no feature built — broker consumer + Elasticsearch <code>dense_vector</code>, no dedicated vector DB</td><td>The event-driven design already adopted for scaling reasons is the same thing that makes AI extensibility cheap later</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: CREATE-PATH & DATA LAYER -->
+<!-- ============================================================ -->
+<section id="cat-create-data">
+<h2>Create-Path &amp; Data Layer</h2>
+<p class="cat-desc">How a single <code>POST /api/short-urls</code> stays cheap, collision-free, and safely retryable once it's served by a horizontally-scaled fleet writing billions of rows over five years — and which distributed-systems patterns (Outbox, Saga) turn out not to be needed at all.</p>
+
+<article class="doc-card" id="doc-01">
+<div class="doc-meta"><span class="doc-num">Doc 01</span><span class="badge">Overview / Framing</span></div>
+<h3>Create-Path Extreme Scalability</h3>
+<p><strong>Question:</strong> Why does v1's SQLite + <code>IMemoryCache</code> design hit a wall at 5M creates/day, and what does the create path need to look like instead?</p>
+<p><strong>Decision:</strong> Three specific bottlenecks stop being theoretical at this scale: SQLite's single-writer file lock, no horizontal scale-out of the database tier, and per-instance cache staleness that compounds as fleet size grows. The fix is <strong>pre-allocated ID blocks</strong> (10,000 IDs per instance, one allocator round-trip per block) with a reversible bit-mixing/permutation step before base62 encoding — so IDs are collision-free by construction (not by low probability) while still satisfying ANFR-08's non-enumerability requirement. The primary datastore moves to a server RDBMS with read replicas and/or sharding; downstream work (analytics indexing, cache warm, moderation re-check) is decoupled from the synchronous create response via asynchronous event publication.</p>
+<div class="section-label">Key numbers</div>
+<ul>
+<li>Block size: <strong>10,000 IDs</strong> per instance — a ~4-order-of-magnitude reduction in allocator contention vs. a per-request uniqueness check.</li>
+<li>Cumulative created links approach <strong>~9 billion</strong> over the 5-year horizon at 5M/day.</li>
+</ul>
+<div class="callout"><div class="callout-title">Alternative considered</div>Snowflake-style local ID generation (timestamp + machine ID + sequence) is named as the fallback if the block allocator itself becomes the bottleneck — not adopted as primary because it needs a reliable machine-ID assignment mechanism and produces a longer encoded code.</div>
+<p><strong>What doesn't need to change:</strong> the API layer's horizontal scaling story carries forward unchanged from v1 — controllers and services are already stateless. What must move to a shared store: per-caller rate-limit counters (see Doc 12).</p>
+</article>
+
+<article class="doc-card" id="doc-10">
+<div class="doc-meta"><span class="doc-num">Doc 10</span><span class="badge conditional">Late-stage escalation, not day-one</span></div>
+<h3>Database Partitioning / Sharding</h3>
+<p><strong>Question:</strong> Does the core <code>ShortUrl</code> table need sharding at this scale, and if so, on what key?</p>
+<p><strong>Decision:</strong> <strong>Partition key: a stable hash of the short <code>Code</code></strong> — not creation date (that's right for the click-event log, wrong here, since a redirect request only ever carries a code, never a date) and not the raw pre-obfuscation integer ID (would correlate sequential blocks onto adjacent hash values). Topology: <strong>consistent hashing with virtual nodes</strong>, starting at ~4 physical shards mapped onto 128–256 virtual nodes, specifically because adding a shard only moves ~1/N of the data instead of a full range re-split.</p>
+<div class="verdict-box"><strong>When to actually shard:</strong> not at the start of the 5-year horizon. Escalation order: (1) migrate off SQLite to a server RDBMS with read replicas, (2) apply native single-database table partitioning, (3) shard only once sustained peak writes exceed <strong>~2,000–3,000 writes/sec</strong>, or backup/maintenance windows breach the operational SLA, or a genuine multi-region active-write need emerges. This review's own numbers (~58 creates/sec average, hundreds-to-low-thousands at peak) land inside what a single well-tuned primary absorbs for most of the horizon.</div>
+<div class="section-label">Real costs, named honestly</div>
+<ul>
+<li>Cross-shard queries (e.g., "list all links for this department") become scatter-gather or need a secondary index.</li>
+<li>Cross-shard transactions lose single-database ACID — the design leans on <em>not building</em> features that need them, not solving distributed transactions.</li>
+<li>Operational load multiplies by shard count: N backups, N migrations, N connection pools.</li>
+</ul>
+<p>Custom-alias uniqueness checks and the create/redirect hot paths stay exactly as cheap as an unsharded table, since the code itself is the routing key.</p>
+</article>
+
+<article class="doc-card" id="doc-28">
+<div class="doc-meta"><span class="doc-num">Doc 28</span><span class="badge">Survey, confirms Doc 01</span></div>
+<h3>Short-Key Generation: Survey and Comparison</h3>
+<p><strong>Question:</strong> Across every realistic short-code generation approach, does pre-allocated ID blocks (Doc 01's pick) actually win, with real collision math?</p>
+<p><strong>Decision:</strong> Yes — confirmed, not revised, across 7 surveyed options. The birthday-paradox math is the load-bearing evidence: v1's random-generation-with-retry approach is fine at 10M links (~1 in 350,000 per-attempt collision probability) but degrades to a real, measurable tax at this review's 5-year cumulative volume of ~9 billion links (<strong>~1 in 390 per-attempt collision probability</strong> — roughly 5 retried requests/sec at 2,000 creates/sec peak).</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Option</th><th>Collision risk</th><th>Enumerability</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>1. Random + retry</td><td>Real at 5-yr scale (~1/390)</td><td>Strong</td><td>Degrades under scale</td></tr>
+<tr><td>2. Auto-increment + base62</td><td>None</td><td><strong>Fails ANFR-08</strong> — 100% enumerable</td><td>Disqualified outright</td></tr>
+<tr><td>3. Truncated hash of URL</td><td>Same order as Option 1 (~0.26%)</td><td>Weak — deterministic per URL</td><td>Breaks per-user ownership model</td></tr>
+<tr><td>4. Hashids / reversible encoding</td><td>None (wraps sequential ID)</td><td>Weak in practice — reversible, not cryptographic</td><td>Adds a dependency for cosmetic obfuscation</td></tr>
+<tr><td>5. GUID/UUID</td><td>Near-zero at full length</td><td>Strong at full length</td><td>36 chars — too long; truncation collapses to Option 1's risk</td></tr>
+<tr><td>6. Snowflake-style</td><td>None</td><td>Moderate — time-sortable, needs obfuscation</td><td>Needs machine-ID coordination this project avoids elsewhere</td></tr>
+<tr><td>7. <strong>Pre-allocated blocks + bit-mixing</strong></td><td><strong>None</strong> (by construction)</td><td>Strong (secret-dependent)</td><td><strong>Recommended — wins on every axis simultaneously</strong></td></tr>
+</tbody>
+</table></div>
+</article>
+
+<article class="doc-card" id="doc-11">
+<div class="doc-meta"><span class="doc-num">Doc 11</span><span class="badge adopt">Adopted</span></div>
+<h3>Idempotency-Key Support for Create Short URL</h3>
+<p><strong>Question:</strong> What happens when a client retries a create request after a lost response, once retry-with-backoff is the standard resilience pattern?</p>
+<p><strong>Decision:</strong> Client-generated <code>Idempotency-Key</code> GUID header, one per logical attempt (reused across every retry). Server computes a SHA-256 hash of the canonicalized request body; on a replay with a matching hash, it returns the original stored response verbatim with <strong>no new row created</strong>; on a matching key with a <em>different</em> body, it returns <code>409 Conflict</code> (not <code>422</code>, which is reserved for the malicious-URL policy check).</p>
+<div class="summary-grid">
+<div class="stat-tile"><div class="stat-label">Storage</div><div class="stat-value">Redis, TTL-bound</div></div>
+<div class="stat-tile"><div class="stat-label">TTL</div><div class="stat-value">24 hours</div></div>
+<div class="stat-tile"><div class="stat-label">Peak storage</div><div class="stat-value">~2 GB @ 5M/day</div></div>
+<div class="stat-tile"><div class="stat-label">Placement</div><div class="stat-value">MVC action filter</div></div>
+</div>
+<p>Even a conservative 0.1–0.5% retry rate against 1M–5M creates/day is <strong>1,000–25,000 duplicate-intent creates per day</strong> with no protection. 24 hours (not 15 minutes, not 30 days) is chosen to cover realistic outer-retry-loop scenarios (batch jobs, offline clients) while keeping storage small — the same window Stripe documents for the same reasoning.</p>
+<div class="callout"><div class="callout-title">Real cost, named honestly</div>An in-flight race between two near-simultaneous retries needs an atomic <code>SET NX</code>-style reservation, not just a lookup — naive check-then-act lets both proceed and defeats the whole mechanism. Every protected create also pays 1–2 extra Redis round trips, and callers that never send the header get no protection at all (a deliberate trade-off, not an oversight).</div>
+</article>
+
+<article class="doc-card" id="doc-20">
+<div class="doc-meta"><span class="doc-num">Doc 20</span><span class="badge reject">Not adopted (narrow exception named)</span></div>
+<h3>Do We Need the Outbox Pattern?</h3>
+<p><strong>Question:</strong> Once the create path publishes a <code>UrlCreated</code> event, do we need the Outbox pattern to guarantee the DB write and the event publish don't diverge (the dual-write problem)?</p>
+<div class="verdict-box"><strong>Verdict: No</strong> — not for <code>UrlCreated</code> at this system's scale, with one narrow exception. The core <code>ShortUrl</code> row is a <em>single local database write with no broker involved</em> — it was never exposed to the dual-write problem in the first place. The only thing that can be lost is the event, and what a missed event costs is a missed index entry / stale search result — self-healing on the next read, correctable by a periodic <code>RowVersion</code>-driven reconciliation sweep that's needed either way (Outbox only guarantees the message left the service, not that a consumer processed it).</div>
+<p><strong>The narrow exception:</strong> if a future event drives something with real consequence when missed — a billing/quota debit, a provable compliance/audit event — that event should go through Outbox. <code>UrlCreated</code> as scoped (analytics/search/cache) is not that.</p>
+<div class="section-label">If the exception ever applies</div>
+<p>The document fully designs the mechanism for reference: an <code>OutboxMessage</code> table (same audit/RowVersion conventions as every other table) written in the same transaction as the entity, and a polling relay (not CDC/Debezium — SQLite has no log-streaming support, and even the server-RDBMS escalation path doesn't justify standing up Kafka Connect for this volume).</p>
+</article>
+
+<article class="doc-card" id="doc-29">
+<div class="doc-meta"><span class="doc-num">Doc 29</span><span class="badge reject">Not adopted</span></div>
+<h3>Why the Saga Pattern Is Not Needed for URL Creation</h3>
+<p><strong>Question:</strong> Is Saga-style compensating-transaction coordination needed for the create flow, since it's "not business critical"?</p>
+<div class="verdict-box"><strong>Verdict: No.</strong> Sagas exist to keep <em>multiple independently-owned databases</em> consistent when a later step fails after earlier steps already committed elsewhere (the canonical flight+hotel+payment example — a seat is held, a room is blocked, and the payment fails, leaving real-world resources needing compensation). URL creation is <strong>one write, one database, one atomic commit</strong> — there is no second service, no partial-success state, and nothing to compensate. The one thing outside that transaction, the <code>UrlCreated</code> event, is fire-and-forget and depended on by nothing downstream — calling it a Saga step would be a category error, not a scale judgment.</div>
+<p><strong>Cost of adopting anyway:</strong> orchestration/choreography machinery with nothing real to coordinate, compensating-transaction logic for a failure mode that doesn't exist (or, worse, inventing artificial intermediate states purely to give the Saga something to compensate), and new operational surface area — all for zero correctness benefit.</p>
+<div class="callout"><div class="callout-title">When it would flip</div>A genuinely hypothetical future example: a "custom domain provisioning" feature that reserves a domain in one service and notifies billing in another, each with its own datastore — that has the real Saga shape. Nothing in v1/v2 introduces this today.</div>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: SEARCH & ANALYTICS STORAGE -->
+<!-- ============================================================ -->
+<section id="cat-search-analytics">
+<h2>Search &amp; Analytics Storage</h2>
+<p class="cat-desc">Where click/analytics data lives once it stops looking like "a table in the app's database" and starts looking like a distinct, aggregation-heavy system with its own throughput profile — plus how that data gets written in efficiently.</p>
+
+<article class="doc-card" id="doc-03">
+<div class="doc-meta"><span class="doc-num">Doc 03</span><span class="badge adopt">Adopted — polyglot split</span></div>
+<h3>Elasticsearch vs. SQL Server for the Click/Analytics Event Store</h3>
+<p><strong>Question:</strong> Is Elasticsearch genuinely better for the click-event store at this scale, or is that just reflexive "ES is for big data"?</p>
+<p><strong>Decision:</strong> <strong>Polyglot persistence, explicit split</strong> — Elasticsearch for the click/analytics event store, SQL Server (or its server-RDBMS successor) stays the relational system of record for the core <code>ShortUrl</code> mapping. The workload shapes are opposite: the mapping table is small, transactional, and correctness-critical (exactly what a relational engine is built for); the event store is huge (up to 100M events/day → 9–36.5 billion rows over a 90–365 day retention window), append-only, near-zero update rate, and aggregation-heavy over time ranges — exactly Elasticsearch's design target.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Criterion</th><th>SQL Server (scaled)</th><th>Elasticsearch</th></tr></thead>
+<tbody>
+<tr><td>Sustained write throughput</td><td>Achievable but every index taxes every insert</td><td>Native strength</td></tr>
+<tr><td>Aggregation over billions of rows</td><td>Needs columnstore + replicas; still scan-and-aggregate</td><td>Native strength — inverted index + aggregation engine</td></tr>
+<tr><td>Retention / rollover</td><td>Partition switching — effective but bolted-on</td><td>ILM — first-class, delete a whole index</td></tr>
+<tr><td>ACID transactions</td><td>Yes</td><td>No</td></tr>
+<tr><td>Fit as system of record</td><td>Yes</td><td>No — explicitly not the source of truth</td></tr>
+</tbody>
+</table></div>
+<div class="callout"><div class="callout-title">Honest weaknesses of ES, named</div>No ACID transactions, eventual consistency (~1s default refresh), real operational complexity (shard/replica/JVM tuning), and it is explicitly not a system of record. Acceptable here because click events are already loss-tolerant per v1's own analytics design.</div>
+</article>
+
+<article class="doc-card" id="doc-04">
+<div class="doc-meta"><span class="doc-num">Doc 04</span><span class="badge conditional">Elasticsearch, conditionally</span></div>
+<h3>Elasticsearch vs. MongoDB for Analytics Events</h3>
+<p><strong>Question:</strong> Given the same click-event workload, does MongoDB beat Elasticsearch on its own terms?</p>
+<p><strong>Decision:</strong> <strong>Elasticsearch, but stated as a genuine conditional, not a unilateral win.</strong> MongoDB's native TTL indexes solve v1's open retention question with near-zero implementation cost, and its aggregation pipeline is adequate at moderate scale. But ES's aggregation engine (purpose-built <code>doc_values</code> + <code>date_histogram</code>/<code>terms</code>) degrades far less as cardinality grows, its ILM is a closer match to "we don't know the retention window yet, but apply it uniformly once we do," and Kibana removes future integration work if AF-10 ever grows into a real dashboard.</p>
+<div class="flip-box"><div class="callout-title">When this recommendation flips</div>If the team's primary operational skill is already MongoDB-centric (existing DBAs/SREs, no ES experience), the operational-simplicity argument dominates and Mongo is the better real-world choice. Or if analytics is confirmed to stay frozen at "count only, forever" — in which case even the existing relational table with a maintained counter may beat both.</div>
+</article>
+
+<article class="doc-card" id="doc-08">
+<div class="doc-meta"><span class="doc-num">Doc 08</span><span class="badge">Applies existing splits</span></div>
+<h3>Metadata Management at Scale</h3>
+<p><strong>Question:</strong> "The metadata of the files" is ambiguous — structured link fields, or actual binary files?</p>
+<p><strong>Decision:</strong> Both, handled differently. <strong>Structured metadata</strong> (original URL, code, creator, timestamps, alias) stays on the existing <code>ShortUrl</code> row — no new store, it just grows by row count, served behind the same Redis cache as the redirect lookup. <strong>QR-code images</strong> (optional/stretch, if ever built) go to <strong>object storage</strong> (Azure Blob/S3-compatible), never a DB blob — keyed by short code, generated lazily on first request rather than for all 5M links/day unconditionally, and fronted by the same CDN as the redirect path.</p>
+<div class="section-label">Lifecycle</div>
+<p>Soft-delete (<code>IsDeleted</code>/<code>DeletedAtUtc</code>) confirmed unchanged at 5M+ rows/day — it's a <code>WHERE</code> predicate on an indexed column, not an operation whose cost grows qualitatively with table size. Orphaned QR objects age out via passive Blob lifecycle policy rather than eager deletion, mirroring the relational soft-delete philosophy.</p>
+<p><strong>Explicitly deferred:</strong> metadata search/filter by creator (e.g., "show my links from last month") — flagged as a considered-but-undesigned gap, likely a composite relational index if ever built, not an ES commitment.</p>
+</article>
+
+<article class="doc-card" id="doc-24">
+<div class="doc-meta"><span class="doc-num">Doc 24</span><span class="badge adopt">Adopted</span></div>
+<h3>Batching Click/Stat Recording via a Redis Staging Counter</h3>
+<p><strong>Question:</strong> At up to 100M fetches/day, how do we record "a click happened" without a durable-storage write on every single fetch?</p>
+<p><strong>Decision:</strong> Redis <code>HINCRBY</code> on a <strong>time-bucketed Hash key</strong> (<code>stats:clicks:{unixTime/15}</code>, field = short code) on every fetch — a second, functionally distinct Redis role from the lookup cache in Doc 07, with its own instance/DB-index and a <code>noeviction</code> policy (an evicted unflushed counter is silent data loss, unlike a cold cache miss). Flushed to SQL Server every <strong>15 seconds</strong> as one batched <code>UPDATE</code> across every touched code, via a grace-period bucket-read that avoids any explicit atomic-swap primitive.</p>
+<div class="summary-grid">
+<div class="stat-tile"><div class="stat-label">Flush interval</div><div class="stat-value">15 seconds</div></div>
+<div class="stat-tile"><div class="stat-label">Write reduction</div><div class="stat-value">~1,150x–12,000x</div></div>
+<div class="stat-tile"><div class="stat-label">Grace buckets</div><div class="stat-value">1 (clock-skew safety)</div></div>
+</div>
+<div class="callout"><div class="callout-title">Durability trade-off, stated plainly</div>If Redis crashes between flushes, unflushed increments are lost — <code>ClickCount</code> becomes approximate (under-counts, never over-counts). Accepted because AF-09 explicitly scopes click count as a "nice to have," not a billing input or security signal. AOF persistence narrows but does not eliminate the loss window.</div>
+<p>Complementary, not redundant, with the broker→Elasticsearch pipeline (Doc 25): that pipeline remains the system of record for the detailed per-click event; this counter is only a fast, approximate, rebuildable derived cache of the aggregate number.</p>
+</article>
+
+<article class="doc-card" id="doc-25">
+<div class="doc-meta"><span class="doc-num">Doc 25</span><span class="badge adopt">Adopted</span></div>
+<h3>Elasticsearch Bulk API for Click/Analytics Event Indexing</h3>
+<p><strong>Question:</strong> Given the store (ES) and delivery mechanism (broker) are already decided, how should the consumer actually write events in?</p>
+<p><strong>Decision:</strong> <strong>Bulk API, not single-document indexing</strong> — the analytics-indexing Worker Service accumulates events in an in-memory buffer and flushes via <code>_bulk</code> on a <strong>size-or-time trigger: 1,000 documents OR 1 second, whichever comes first</strong>. Single-doc indexing at this volume would require ~1,150–12,150 individual HTTP calls/sec — arithmetically impossible through the 20-slot Elasticsearch bulkhead already sized in Doc 19.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Load</th><th>Single-doc calls/sec</th><th>Bulk requests/sec</th></tr></thead>
+<tbody>
+<tr><td>5-yr sustained average</td><td>~1,150–1,215</td><td><strong>~1–2</strong></td></tr>
+<tr><td>5-yr peak burst</td><td>~6,100–12,150</td><td><strong>~6–12</strong></td></tr>
+</tbody>
+</table></div>
+<p><strong>Backpressure:</strong> a bounded in-memory buffer (5,000–10,000 events); once full, the consumer stops pulling from the broker rather than growing memory unboundedly — the broker (already durable) absorbs the backlog, not process memory. <strong>Partial failure:</strong> the <code>_bulk</code> response is parsed per-item — only the failed subset is retried or dead-lettered, never the whole batch, and broker offsets commit only for what Elasticsearch actually accepted.</p>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: CACHING & EDGE DELIVERY -->
+<!-- ============================================================ -->
+<section id="cat-caching-edge">
+<h2>Caching &amp; Edge Delivery</h2>
+<p class="cat-desc">Making the redirect path — the single highest-volume operation in the system — as cheap as possible to serve, ideally without most traffic ever touching the origin at all.</p>
+
+<article class="doc-card" id="doc-06">
+<div class="doc-meta"><span class="doc-num">Doc 06</span><span class="badge adopt">Adopted — layered exception to v1</span></div>
+<h3>Output Caching, BFF, and CDN for the Public Redirect API</h3>
+<p><strong>Question:</strong> How do we get redirect throughput up without silently reintroducing the staleness problem v1's 302-not-301 decision was specifically designed to prevent?</p>
+<p><strong>Decision:</strong> Three layered techniques, each with a deliberately short, bounded TTL — turning "never see the origin again" (301's failure mode) into "see the origin again within N seconds":</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Layer</th><th>Mechanism</th><th>TTL</th></tr></thead>
+<tbody>
+<tr><td>ASP.NET Core Output Cache</td><td>Whole-response cache, keyed by <code>shortCode</code> only</td><td><strong>10 seconds</strong>, plus proactive eviction on deactivation</td></tr>
+<tr><td>BFF split</td><td>Redirect endpoint gets its own deployable — no auth middleware, minimal dependency graph, independently scaled</td><td>—</td></tr>
+<tr><td>Cloudflare CDN edge cache</td><td>Cache Rule on the redirect route + origin <code>Cache-Control: public, max-age=30</code></td><td><strong>30 seconds</strong></td></tr>
+</tbody>
+</table></div>
+<div class="flip-box"><div class="callout-title">Explicit exception to v1, stated for the record</div>v1's <code>fn-fetch.md</code> §10 chose 302 specifically so <em>every</em> access hits the origin, guaranteeing real-time expiry/deactivation enforcement and exact analytics counts. This document knowingly trades that guarantee: a deactivated link can keep resolving from edge cache for up to ~30 seconds, and analytics undercounts by roughly the CDN's cache-hit ratio (commonly 80–95%+). Accepted in exchange for absorbing the large majority of 100M/day traffic before origin. Cloudflare Logpush is named as the required companion reconciliation mechanism for exact counts.</div>
+<p><strong>Why 10s and 30s, not longer:</strong> a 10-second TTL is enough to collapse a viral burst to roughly one origin hit per 10 seconds for that code — the overwhelming majority of the available benefit; going to 60s buys little more origin-load reduction while multiplying staleness 6x. Same diminishing-returns logic sets the CDN tier at 30s, deliberately looser than the origin tier since it sits further from the source of truth.</p>
+</article>
+
+<article class="doc-card" id="doc-07">
+<div class="doc-meta"><span class="doc-num">Doc 07</span><span class="badge adopt">Adopted — like-for-like upgrade</span></div>
+<h3>Redis-Based Distributed Caching for Frequently-Accessed Short Codes</h3>
+<p><strong>Question:</strong> Why does v1's per-instance <code>IMemoryCache</code> break once the API runs as many horizontally-scaled instances?</p>
+<p><strong>Decision:</strong> Swap <code>IMemoryCache</code> for a <strong>shared, managed Redis tier</strong> behind the same <code>IShortUrlRepository</code> Decorator abstraction v1 already used — same interface, same cache-aside pattern, only the backing store changes. Fixes two problems that get worse with fleet size: hit rate degrading roughly by a factor of N (every instance re-learns the same hot set independently), and invalidation only clearing the instance that handled the write (others serve stale data until TTL).</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Setting</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>What's cached</td><td><code>{OriginalUrl, ExpiresAtUtc, IsActive}</code> — nothing more</td></tr>
+<tr><td>TTL (backstop)</td><td>5 minutes — unchanged from v1, carried forward deliberately</td></tr>
+<tr><td>Eviction</td><td><code>maxmemory 4gb</code> + <code>allkeys-lru</code> (not <code>volatile-lru</code> or <code>noeviction</code>)</td></tr>
+<tr><td>Topology</td><td>Managed Redis (Azure Cache for Redis Premium / AWS ElastiCache), clustered with replica failover</td></tr>
+<tr><td>Max staleness</td><td>Seconds (normal case, active invalidation) / 5 minutes (worst case, missed event)</td></tr>
+</tbody>
+</table></div>
+<p><strong>Invalidation:</strong> publish-on-write, subscribe-and-evict — the write path commits to DB + outbox in one transaction; a lightweight subscriber deletes the Redis key cluster-wide. The write path never takes a synchronous dependency on Redis being reachable. TTL remains the backstop for missed/lost invalidation events, human error, or a lagging subscriber.</p>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: MESSAGING & ASYNC PROCESSING -->
+<!-- ============================================================ -->
+<section id="cat-messaging-async">
+<h2>Messaging &amp; Async Processing</h2>
+<p class="cat-desc">What actually transports events off the request path, and where the code that consumes them runs.</p>
+
+<article class="doc-card" id="doc-05">
+<div class="doc-meta"><span class="doc-num">Doc 05</span><span class="badge reject">Not adopted by default</span></div>
+<h3>Kafka Comparison: Is a Message Broker (and Specifically Kafka) Suitable Here?</h3>
+<p><strong>Question:</strong> Does this system's event volume justify Kafka, or does a simpler managed queue do the job?</p>
+<div class="verdict-box"><strong>Verdict: not suitable as a default choice at the stated volume alone.</strong> The math, worked through explicitly:</div>
+<div class="summary-grid">
+<div class="stat-tile"><div class="stat-label">Combined avg (5-yr)</div><div class="stat-value">~1,215 events/sec</div></div>
+<div class="stat-tile"><div class="stat-label">Peak (5–10x)</div><div class="stat-value">~6,100–12,150/sec</div></div>
+<div class="stat-tile"><div class="stat-label">Kafka's design point</div><div class="stat-value">millions/sec</div></div>
+<div class="stat-tile"><div class="stat-label">% of one broker's capacity</div><div class="stat-value">~0.1–1%</div></div>
+</div>
+<p>Every option in the comparison set — including options with materially less operational overhead — handles this volume without strain. <strong>Recommendation: Azure Service Bus Topics/Subscriptions</strong> as the default (three named consumers = three subscriptions on one topic), with Kafka retained as an <strong>explicit, named upgrade path</strong>, not the starting point.</p>
+<div class="callout"><div class="callout-title">What would actually justify Kafka</div>Not throughput — <strong>replay</strong> (rebuilding the ES index from scratch without re-deriving from the OLTP store) and <strong>independent consumer groups added over time that need retroactive history</strong> (a fraud-detection service added 18 months from now). Neither is a near-term requirement today.</p>
+<p><strong>Honest cost of choosing Kafka anyway:</strong> self-managed Kafka needs partition/replication planning, broker sizing, consumer-lag/ISR monitoring, and genuine Kafka expertise on the team — a standing multi-person operational responsibility, not a one-time setup.</p>
+</article>
+
+<article class="doc-card" id="doc-21">
+<div class="doc-meta"><span class="doc-num">Doc 21</span><span class="badge">Split by workload shape</span></div>
+<h3>Background Job Hosting: Worker Service vs. Azure Functions</h3>
+<p><strong>Question:</strong> Should background/async work run as a long-running .NET Worker Service or Azure Functions?</p>
+<p><strong>Decision:</strong> <strong>Split by workload shape, not one winner.</strong> Two genuinely different shapes exist in this system:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Workload</th><th>Hosting model</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Analytics-indexing consumer, cache-invalidation subscriber, outbox relay (if built)</td><td><strong>Long-running Worker Service</strong> (containerized <code>BackgroundService</code>)</td><td>Continuous, ~1,200/sec sustained, stateful consumer-group connections — never idle, so never realizes serverless's core value; cheaper as a fixed-baseline container at this volume</td></tr>
+<tr><td>Retention-cleanup sweep, reconciliation sweep</td><td><strong>Azure Functions</strong> (Timer-triggered, Consumption plan)</td><td>Minutes of work, a few times/day — a dedicated always-on container would pay ~99% of its cost for idle time</td></tr>
+</tbody>
+</table></div>
+<div class="callout"><div class="callout-title">The cost crossover, quantified</div>At ~1,200 events/sec sustained 24/7, a Consumption-plan function is functionally never idle — it never scales to zero, so it pays the serverless per-execution premium the entire time while getting none of serverless's elasticity benefit. A long-running worker's cost, by contrast, is fixed once sized and improves per-event as throughput grows.</div>
+<p>Consumer-group/offset semantics are also a poor fit for a per-invocation model — the Functions host ends up running something structurally equivalent to a long-lived consumer underneath the serverless label anyway, just with less visibility and control.</p>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: RESILIENCE PATTERNS -->
+<!-- ============================================================ -->
+<section id="cat-resilience">
+<h2>Resilience Patterns</h2>
+<p class="cat-desc">Seven documents, each covering one resilience mechanism in isolation with its own concrete tuning numbers — deliberately not merged into one mega-document, because each has genuinely different numbers worth calling out on its own.</p>
+
+<article class="doc-card" id="doc-12">
+<div class="doc-meta"><span class="doc-num">Doc 12</span><span class="badge adopt">Adopted</span></div>
+<h3>Distributed Rate Limiting for a Horizontally-Scaled API</h3>
+<p><strong>Question:</strong> Why does v1's in-memory <code>RateLimitPartition.GetFixedWindowLimiter</code> break once the API runs as N instances?</p>
+<p><strong>Decision:</strong> With N instances each enforcing the same limit independently, a caller spreading requests across instances gets up to <strong>N&times; the intended limit</strong>. Fix: move the counter to <strong>Redis-backed sliding-window counters</strong> (not token bucket — a pure fixed-window or token-bucket allows boundary/idle bursting, exactly the scripted-bulk-creation abuse pattern this control exists to close), implemented as a custom <code>PartitionedRateLimiter</code> inside the existing <code>Microsoft.AspNetCore.RateLimiting</code> middleware.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Endpoint</th><th>Partition key</th></tr></thead>
+<tbody>
+<tr><td>Create (authenticated)</td><td><code>ratelimit:create:user:{userId}</code></td></tr>
+<tr><td>Create — daily volume ceiling</td><td><code>ratelimit:createvolume:user:{userId}:{yyyyMMdd}</code></td></tr>
+<tr><td>Fetch/redirect (anonymous)</td><td><code>ratelimit:fetch:ip:{clientIp}</code> — high ceiling, guards abuse only</td></tr>
+</tbody>
+</table></div>
+<div class="callout"><div class="callout-title">Failure mode: Redis unavailable — asymmetric by design</div><strong>Create fails closed</strong> (503, not a free pass for scripted abuse at the worst possible moment). <strong>Fetch/redirect fails open</strong> — redirect availability is named specifically in ANFR-01/ANFR-05, and refusing redirects because the rate limiter is down is a worse outcome than temporarily under-enforcing an abuse control.</div>
+</article>
+
+<article class="doc-card" id="doc-14">
+<div class="doc-meta"><span class="doc-num">Doc 14</span><span class="badge adopt">Adopted</span></div>
+<h3>Timeout Pattern for Outbound Calls</h3>
+<p><strong>Question:</strong> Why does every outbound call need an explicit timeout, not just the one v1 already had?</p>
+<div class="verdict-box">A dependency that is <strong>slow is worse than a dependency that is down</strong> — a down dependency fails fast; a slow one hangs, exhausting the thread pool and connection pools far faster than raw load would, and shows up as creeping tail latency instead of a clean, alertable failure.</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Dependency</th><th>Call</th><th>Timeout</th></tr></thead>
+<tbody>
+<tr><td>Redis</td><td>Redirect-path <code>GET</code></td><td><strong>30 ms</strong></td></tr>
+<tr><td>Primary DB</td><td>Redirect-path lookup (cache miss)</td><td><strong>100 ms</strong></td></tr>
+<tr><td>Primary DB</td><td>Create-path write</td><td><strong>500 ms</strong></td></tr>
+<tr><td>Elasticsearch</td><td>Metadata/analytics query</td><td><strong>2 s</strong></td></tr>
+<tr><td>Broker</td><td>Producer publish</td><td><strong>5 s</strong></td></tr>
+<tr><td>Moderation-check HTTP</td><td>Per-attempt / overall</td><td><strong>2 s / 5 s</strong> (unchanged from v1)</td></tr>
+</tbody>
+</table></div>
+<p>Timeouts get <strong>tighter</strong> closer to the redirect hot path and <strong>looser</strong> further from a human waiting on a response — allocated against the p95 &lt; 50ms / p99 &lt; 150ms redirect targets, not a uniform policy. Connection timeout (can I even reach it) and operation timeout (did it answer fast enough) are tracked as two distinct bounds, both tighter than client-library defaults.</p>
+</article>
+
+<article class="doc-card" id="doc-15">
+<div class="doc-meta"><span class="doc-num">Doc 15</span><span class="badge adopt">Adopted</span></div>
+<h3>Retry Pattern for Extreme-Scale Dependencies</h3>
+<p><strong>Question:</strong> Given an attempt failed, should there be another attempt at all, and under what bound?</p>
+<p><strong>Decision:</strong> Retry only <strong>transient</strong> failures — network errors, 5xx, timeouts. Never retry <strong>deterministic</strong> failures — 4xx validation, duplicate-alias 409, a definitive moderation "flagged" verdict (retrying just delays telling the caller the truth). Budget: <strong>2–3 retries (3–4 total attempts)</strong> per call, dependency-dependent.</p>
+<div class="callout"><div class="callout-title">Idempotency is the precondition for retrying writes</div>Reads retry freely — no side effect to duplicate. Writes retry only when naturally idempotent (an ES upsert) or guarded by the idempotency-key mechanism in Doc 11. Otherwise a failed write surfaces to the caller rather than being silently retried.</div>
+<p>A fleet of instances each independently retrying against a struggling dependency is a self-inflicted denial-of-service — retry amplification can exceed the load that degraded the dependency in the first place, and unbounded retry also delays the circuit breaker (Doc 18) from ever tripping.</p>
+</article>
+
+<article class="doc-card" id="doc-16">
+<div class="doc-meta"><span class="doc-num">Doc 16</span><span class="badge adopt">Adopted</span></div>
+<h3>Exponential Backoff for Retry Delays</h3>
+<p><strong>Question:</strong> With no delay between retries, why does a struggling dependency get worse, not better?</p>
+<pre><code>delay(attempt) = min(base &times; factor^(attempt&minus;1), cap)</code></pre>
+<div class="summary-grid">
+<div class="stat-tile"><div class="stat-label">Base</div><div class="stat-value">100 ms</div></div>
+<div class="stat-tile"><div class="stat-label">Factor</div><div class="stat-value">2&times; (doubling)</div></div>
+<div class="stat-tile"><div class="stat-label">Cap</div><div class="stat-value">30 s</div></div>
+</div>
+<p>A delay-free retry policy means every in-flight request across every instance fails at roughly the same instant and retries immediately — the dependency has to absorb roughly double its normal load the moment it's least able to, potentially extending the outage rather than letting it clear (a <strong>metastable failure state</strong>). The 30s cap is a safety rail for the patient, decoupled async paths (outbox relay, cache-invalidation subscriber) — synchronous calls (moderation check, cache-then-DB fallback) exhaust their small attempt budget at the 100/200/400ms rung, well inside a 5s window, long before the cap matters.</p>
+</article>
+
+<article class="doc-card" id="doc-17">
+<div class="doc-meta"><span class="doc-num">Doc 17</span><span class="badge adopt">Adopted — Decorrelated Jitter</span></div>
+<h3>Jitter</h3>
+<p><strong>Question:</strong> Backoff makes each caller retry less often over time — so why do hundreds of instances still hammer a recovering dependency in synchronized waves?</p>
+<div class="verdict-box">Because every instance computes the <em>same deterministic curve</em> from the same trigger moment — all attempt-3 retries land at the same ~800ms mark, fleet-wide. The dependency recovers and immediately absorbs the entire backlog at once (<strong>thundering herd</strong>), often re-tripping it in a flap cycle.</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Strategy</th><th>Formula</th><th>Weakness</th></tr></thead>
+<tbody>
+<tr><td>Full Jitter</td><td><code>random(0, exp_value)</code></td><td>Can draw two small delays in a row — near-instant repeated retries</td></tr>
+<tr><td>Equal Jitter</td><td><code>exp/2 + random(0, exp/2)</code></td><td>Less spread than Full Jitter</td></tr>
+<tr><td><strong>Decorrelated Jitter (chosen)</strong></td><td><code>random(base, prev_delay &times; 3)</code>, floor = base</td><td>Slightly more code (stateful) — worth it at this fleet size</td></tr>
+</tbody>
+</table></div>
+<p>Decorrelated Jitter's floor at <code>base</code> means no attempt is ever near-instant after the first, and the <code>&times;3</code> multiplier keeps the ceiling trending upward — preserving exponential backoff's useful shape while still breaking fleet-wide lockstep. Implemented via Polly's <code>UseJitter = true</code> on the exponential curve.</p>
+</article>
+
+<article class="doc-card" id="doc-18">
+<div class="doc-meta"><span class="doc-num">Doc 18</span><span class="badge adopt">Adopted</span></div>
+<h3>Circuit Breaker</h3>
+<p><strong>Question:</strong> What do retry/backoff/jitter not solve — a dependency that is genuinely down, not transiently slow?</p>
+<p><strong>Decision:</strong> Polly's <code>CircuitBreakerStrategy</code> per dependency — a rolling sample window with a failure-ratio threshold, not "N consecutive failures" (which breaks down under concurrent load). Worked example: the <strong>Elasticsearch analytics-query call</strong>, chosen because its fallback is cheap and safe (serve stale cached count, or omit the field) — the core redirect path never touches ES at all.</p>
+<div class="summary-grid">
+<div class="stat-tile"><div class="stat-label">Sampling window</div><div class="stat-value">30 s</div></div>
+<div class="stat-tile"><div class="stat-label">Min throughput</div><div class="stat-value">20 calls</div></div>
+<div class="stat-tile"><div class="stat-label">Failure ratio</div><div class="stat-value">50%</div></div>
+<div class="stat-tile"><div class="stat-label">Break duration</div><div class="stat-value">30 s</div></div>
+</div>
+<p><strong>Trip condition, one sentence:</strong> if at least 20 calls occur in a rolling 30s window and 50%+ fail, the circuit opens for 30s, then half-opens with a small trial-call budget before fully closing or reopening.</p>
+<div class="callout"><div class="callout-title">Fallback is dependency-specific — the load-bearing design decision</div>ES: serve last cached count, tagged stale, or omit the field (HTTP 200, never fabricate a 0). Redis cache: bypass and read primary DB. Primary DB: no safe fallback for writes — fail fast, don't fabricate success. Message broker: cannot silently drop (data loss) — buffer/spool or reject with retry guidance. Moderation check: fail the create with a clear 503, never "allow-all while open."</div>
+</article>
+
+<article class="doc-card" id="doc-19">
+<div class="doc-meta"><span class="doc-num">Doc 19</span><span class="badge adopt">Adopted</span></div>
+<h3>Bulkhead Isolation for Shared Resource Pools</h3>
+<p><strong>Question:</strong> Why can a slow Elasticsearch or moderation-check call take down the completely unrelated, highest-priority redirect path?</p>
+<div class="verdict-box">Because they all share the same process: the same CLR thread pool, the same default connection limits. Without a hard ceiling, outstanding calls to a slow dependency accumulate faster than they drain until they exhaust a shared, finite resource — and this is <strong>invisible in the failing dependency's own health metrics</strong>. Elasticsearch can report degraded-but-not-down while the redirect path's latency spikes for a completely unrelated reason.</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Compartment</th><th>Starting concurrency ceiling</th></tr></thead>
+<tbody>
+<tr><td>Redirect path — DB/cache reads</td><td><strong>200</strong></td></tr>
+<tr><td>Create path — DB writes</td><td><strong>50</strong></td></tr>
+<tr><td>Moderation-check HTTP client</td><td><strong>10</strong> — deliberately tight</td></tr>
+<tr><td>Elasticsearch indexing</td><td><strong>20</strong></td></tr>
+<tr><td>Redis — rate-limit counters</td><td><strong>50</strong></td></tr>
+</tbody>
+</table></div>
+<p>Implemented via Polly's <code>AddConcurrencyLimiter</code> (the modern replacement for the legacy Bulkhead policy) or a <code>SemaphoreSlim</code>-based gate for non-HTTP dependencies. A small bounded queue sits beyond the ceiling; once that's also full, requests are rejected immediately with <code>503</code> rather than piling up — a large queue only delays the same resource exhaustion, it doesn't prevent it.</p>
+<div class="callout"><div class="callout-title">Complements, doesn't overlap with, Circuit Breaker</div>Bulkhead caps <em>how many</em> calls run regardless of outcome; circuit breaker decides <em>whether to attempt at all</em> based on failure history. Needed together: without a breaker, a bulkhead's small pool can be permanently saturated by calls guaranteed to fail; without a bulkhead, a healthy-but-slow dependency under legitimate load can still exhaust shared resources since it never trips a failure-based breaker.</div>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: SECURITY -->
+<!-- ============================================================ -->
+<section id="cat-security">
+<h2>Security</h2>
+<p class="cat-desc">What changes about the threat model specifically once the system operates at real scale — beyond the v1 security baseline, which this document does not repeat.</p>
+
+<article class="doc-card" id="doc-22">
+<div class="doc-meta"><span class="doc-num">Doc 22</span><span class="badge">Three v2-specific gaps</span></div>
+<h3>Security at Extreme Scale: Reputation, Attack Surface, and Authorization</h3>
+<p><strong>Question:</strong> What breaks specifically at scale that v1's security baseline didn't need to address?</p>
+
+<h4>1. Domain reputation — a shared, poisonable resource</h4>
+<p>A constant false-negative rate on the creation-time domain check stops being noise at volume: <strong>0.1% of 5M/day is ~5,000 uncaught bad links created per day, every day</strong>. Worse, the check runs once at creation — a domain that's clean at creation and compromised weeks later ("domain drift") is invisible by construction. Reputation blocklisting is not proportional to abuse: ~50 flagged links can get the <em>entire domain</em> blocklisted, breaking every other legitimate link simultaneously.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Mitigation</th><th>Mechanism</th></tr></thead>
+<tbody>
+<tr><td>Continuous re-scanning</td><td>Tiered cadence — high-click links daily, new links daily for 7 days, long tail monthly</td></tr>
+<tr><td>Fast automated takedown</td><td>Immediate deactivation on a post-creation flag, propagated through every cache layer</td></tr>
+<tr><td>Domain-reputation monitoring</td><td>Hourly checks against Safe Browsing/SmartScreen, wired into the observability alert set</td></tr>
+</tbody>
+</table></div>
+
+<h4>2. Attack-surface issues introduced or amplified by v2's topology</h4>
+<ul>
+<li><strong>Distributed enumeration:</strong> per-IP limits (Doc 12) do nothing against a scan spread across thousands of IPs each individually staying under threshold. Named as a genuine, unsolved gap — the fix is aggregate 404-rate anomaly detection, not a bigger Redis counter.</li>
+<li><strong>DDoS on redirect:</strong> the Cloudflare CDN (Doc 06) is stated explicitly as this system's <strong>primary DDoS absorption layer</strong>, not just a performance optimization; origin-level rate limiting is the second line of defense.</li>
+<li><strong>Broker/consumer injection risk:</strong> the API boundary's input validation does not extend automatically past the producer — every Kafka/broker consumer is a new trust boundary and must independently validate deserialized payloads.</li>
+</ul>
+
+<h4>3. Authorization — more enforcement surfaces, not fewer</h4>
+<div class="flip-box"><div class="callout-title">The concrete leak scenario</div>AF-10's analytics API is creator-only. Once analytics data moves to Elasticsearch (Doc 03), that scoping is <strong>not inherited automatically</strong> — an ES aggregation query that omits a <code>term</code> filter on the owner returns every creator's data, and nothing about the query fails or looks incomplete. This is exactly the kind of gap a single-database v1 system structurally could not have.</div>
+<p><strong>Recommendation:</strong> centralize authorization in the <code>Application</code> layer, before any data-store query is issued — relational or Elasticsearch — never relying on a downstream store's own access control as the sole enforcement point.</p>
+<div class="section-label">Explicitly out of scope</div>
+<p>Full pen testing, WAF rule specifics, formal certification (SOC 2/ISO 27001), the actual auth/authn mechanism (v1's mock is not resolved here), vendor selection, and a concrete anomaly-detection implementation.</p>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: OBSERVABILITY -->
+<!-- ============================================================ -->
+<section id="cat-observability">
+<h2>Observability</h2>
+<p class="cat-desc">How a single user-visible symptom gets diagnosed once its causal path spans an API instance, a cache node, a broker, a consumer process, and a search cluster — instead of one process's console log.</p>
+
+<article class="doc-card" id="doc-13">
+<div class="doc-meta"><span class="doc-num">Doc 13</span><span class="badge adopt">Adopted</span></div>
+<h3>Observability at Extreme Scale</h3>
+<p><strong>Question:</strong> Why does v1's liveness/readiness-endpoint model stop being sufficient?</p>
+<div class="verdict-box">v1 has exactly one place a request can be — one process, one local database. v2 removes every one of those simplifying assumptions: multiple API instances, a distributed cache, an async event pipeline, a separate analytics store. Grepping one instance's log cannot answer "which of these five components is the bottleneck for this one request," because nothing ties the log lines together. Observability is <strong>making the request path traceable as a graph, not a line.</strong></div>
+
+<div class="section-label">Tracing</div>
+<p><strong>OpenTelemetry .NET SDK</strong>, W3C Trace Context propagation. The hard part v1 never had: propagating trace context <em>across the async broker boundary</em> — the producer attaches <code>traceparent</code> to message headers, the consumer extracts it and starts a child span, not a new root trace, so one trace ID connects "API received request" through "consumer picked it up 400ms later on a different machine" to "document indexed into Elasticsearch."</p>
+
+<div class="section-label">Metrics — the cardinality rule</div>
+<div class="callout"><div class="callout-title">Never tag a metric with an unbounded per-entity value</div>Tagging by raw short code, user ID, or IP creates a new time series per code — millions of them — the classic "cardinality explosion" that destroys a metrics pipeline. Aggregate by endpoint, status class, cache hit/miss, consumer name instead. Per-entity questions belong to traces and logs, not metrics.</div>
+<p>Core metric set: request rate, per-endpoint p50/p95/p99 latency histograms (never pre-averaged), cache hit rate, queue depth/consumer lag, error rate.</p>
+
+<div class="section-label">Alerting — 5 SLO-driven Grafana Alerting rules</div>
+<ol>
+<li>Redirect p99 latency SLO burn (sustained window, not single breach)</li>
+<li>Redirect p95 warning (earlier heads-up before the p99 alert)</li>
+<li>Cache hit-rate drop (leading indicator before latency degrades)</li>
+<li>Consumer lag growth (threatens the "seconds not minutes" invalidation guarantee from Doc 07)</li>
+<li>Error rate spike (general-purpose backstop)</li>
+</ol>
+
+<div class="section-label">Tooling</div>
+<p><strong>OpenTelemetry SDK for instrumentation, exporting via OTLP to a Grafana stack</strong> — Loki (logs), Tempo (traces), a Prometheus-compatible store (metrics), Grafana (dashboards/alerting). Named honestly as separate infrastructure from the Elasticsearch analytics cluster — a real, additional operational cost, chosen because Loki's label-only indexing is materially cheaper at this log volume than full-text-indexed logs, and the stack has a strong Kubernetes-native operational story. Elastic Observability and Application Insights are named as legitimate alternatives if minimizing platform count or Azure-managed hosting is the priority instead.</p>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: INFRASTRUCTURE & OPERATIONS -->
+<!-- ============================================================ -->
+<section id="cat-infra-ops">
+<h2>Infrastructure &amp; Operations</h2>
+<p class="cat-desc">Assembling every individually-decided component into one coherent, edge-to-data-tier topology with a concrete, named auto-scaling model — plus an explicit statement of what this review deliberately does not cover.</p>
+
+<article class="doc-card" id="doc-26">
+<div class="doc-meta"><span class="doc-num">Doc 26</span><span class="badge">Assembles prior decisions</span></div>
+<h3>Infrastructure &amp; Deployment Design: Edge to Data Tier</h3>
+<p><strong>Question:</strong> How do all the individually-decided components (CDN, Redis, Elasticsearch, broker, Worker Service, sharded DB) run together — and what makes compute scale automatically, concretely, in Azure terms?</p>
+
+<div class="section-label">Layer-by-layer topology</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Layer</th><th>Service</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>1 — Edge</td><td>Cloudflare CDN</td><td>Edge cache (30s TTL) + primary volumetric DDoS absorption</td></tr>
+<tr><td>2 — Firewall/WAF</td><td>Azure WAF on <strong>Azure Front Door Premium</strong></td><td>OWASP CRS + custom rules, application-layer inspection</td></tr>
+<tr><td>3 — Load balancing</td><td>Front Door (global L7) + <strong>Azure Load Balancer Standard</strong> (regional L4)</td><td>Two distinct jobs at two layers, not one duplicated</td></tr>
+<tr><td>4 — Compute</td><td><strong>Azure Kubernetes Service (AKS)</strong></td><td>API pods + background consumer pods, separate node pools</td></tr>
+<tr><td>5 — Data tier</td><td>Azure SQL, Azure Cache for Redis, Elastic Cloud on Azure, Azure Service Bus</td><td>Managed PaaS by default; AKS self-hosting named as an escalation path per component</td></tr>
+</tbody>
+</table></div>
+
+<div class="section-label">The elastic-scaling model — two independent, composing mechanisms</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Mechanism</th><th>Scales</th><th>Trigger</th><th>Reaction time</th></tr></thead>
+<tbody>
+<tr><td>Horizontal Pod Autoscaler (HPA)</td><td>Pod replica count</td><td><strong>RPS-per-pod</strong> for API pods (not CPU — the BFF is I/O-bound)</td><td>Seconds, if nodes have room</td></tr>
+<tr><td>KEDA</td><td>Pod replica count</td><td><strong>Broker/queue depth</strong> for consumer pods (Service Bus subscription depth / Kafka consumer-group lag)</td><td>Seconds; scales to zero when idle</td></tr>
+<tr><td>Cluster Autoscaler</td><td>Underlying AKS node (VM) count</td><td>Unschedulable (<code>Pending</code>) pods on the current node pool</td><td>~1–3 minutes (new VM provisioning)</td></tr>
+</tbody>
+</table></div>
+<p>This is the concrete two-part answer to "server capacity increases automatically": HPA/KEDA decide <em>how many pods</em>; Cluster Autoscaler decides <em>how many nodes those pods need to fit on</em>. Neither alone is sufficient — HPA can only queue pods as <code>Pending</code> if there's no room; Cluster Autoscaler has no opinion about load on its own.</p>
+
+<div class="section-label">Multi-region</div>
+<div class="verdict-box"><strong>Not adopted for v2.</strong> A single, well-scaled Azure region plus availability-zone redundancy is judged sufficient — the CDN already absorbs the large majority of traffic before it reaches the origin region, and nothing in this review's traffic numbers crosses a threshold a well-autoscaled single-region AKS cluster can't serve. Multi-region active-active is named as the next escalation if genuine regional data-residency, an unmet latency SLA, or traffic materially beyond the 5-year projection ever emerges.</div>
+
+<div class="section-label">Explicitly out of scope</div>
+<p>Infrastructure-as-Code implementation, cost estimation, specific Azure region/SKU sizing, CI/CD pipeline design (see Doc 27), and concrete WAF rule sets.</p>
+</article>
+
+<article class="doc-card" id="doc-27">
+<div class="doc-meta"><span class="doc-num">Doc 27</span><span class="badge reject">Out of scope</span></div>
+<h3>DevOps — Out of Scope for This Review</h3>
+<p><strong>Decision:</strong> DevOps — how software is built, tested, and delivered into environments — is <strong>explicitly excluded</strong> from this review, per the review's own stated scoping discipline of limiting each pass to one or two items rather than expanding indefinitely.</p>
+<div class="section-label">What that exclusion covers</div>
+<ul>
+<li>CI/CD pipeline design (build/test/quality gates)</li>
+<li>Deployment automation and release strategy (blue/green, canary)</li>
+<li>Infrastructure-as-Code authoring (Bicep/Terraform)</li>
+<li>Environment promotion strategy</li>
+<li>Secrets/config management tooling</li>
+<li>Rollback procedures</li>
+</ul>
+<p><strong>Adjacent but distinct:</strong> Doc 26 (infrastructure topology) answers <em>what</em> infrastructure exists and <em>where</em> it runs. DevOps answers <em>how</em> that infrastructure gets built, deployed, and updated over time. Doc 26 should not be mistaken for a DevOps design.</p>
+</article>
+</section>
+
+<!-- ============================================================ -->
+<!-- CATEGORY: FORWARD-LOOKING -->
+<!-- ============================================================ -->
+<section id="cat-forward-looking">
+<h2>Forward-Looking / AI Readiness</h2>
+<p class="cat-desc">Does anything in this architecture block bolting on AI-driven capability later — and if not, where would it attach? A readiness consideration, explicitly not a feature commitment.</p>
+
+<article class="doc-card" id="doc-23">
+<div class="doc-meta"><span class="doc-num">Doc 23</span><span class="badge">Readiness, not a feature</span></div>
+<h3>AI Pluggability and Vector Readiness</h3>
+<p><strong>Question:</strong> Can URLs and metadata be optionally represented as vectors later, without a redesign?</p>
+<p><strong>Decision:</strong> Yes, and the mechanism already exists for reasons unrelated to AI. <strong>Where embeddings would be generated:</strong> a new, independent AI-enrichment <em>consumer</em> subscribing to the existing <code>UrlCreated</code> broker event (Doc 05) — off the hot path entirely, touching nothing in the create/fetch write path. <strong>Where vectors would live:</strong> <strong>Elasticsearch's native <code>dense_vector</code> field + k-NN support</strong> — explicitly <em>not</em> a dedicated vector database (Pinecone, Weaviate, Milvus), since nothing in this system's realistic use cases (similarity search over its own link corpus, not a general-purpose embedding product) approaches the scale/recall profile that would justify paying the operational cost of a second specialized store.</p>
+<pre><code>"metadataEmbedding": {
+  "type": "dense_vector",
+  "dims": 768,          // illustrative — depends on the (unselected) embedding model
+  "index": true,
+  "similarity": "cosine"
+}</code></pre>
+<p>The field is nullable and additive — a document with no vector is a completely normal document; every existing query is unaffected.</p>
+
+<div class="section-label">Every extension point maps onto an existing pattern — nothing new is invented</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Extension point</th><th>Existing pattern used</th></tr></thead>
+<tbody>
+<tr><td>New consumer on <code>UrlCreated</code>/<code>UrlClicked</code></td><td>The broker pipeline already designed in Doc 05</td></tr>
+<tr><td>Swappable AI moderation classifier</td><td>Strategy — a second <code>ILinkSafetyChecker</code> implementation</td></tr>
+<tr><td>Enrichment wrapper</td><td>Decorator — same seam already earmarked for caching</td></tr>
+<tr><td>Isolating the AI vendor SDK</td><td>Adapter — same pattern <code>ILinkSafetyChecker</code>'s reputation-API implementation already uses</td></tr>
+</tbody>
+</table></div>
+<div class="callout"><div class="callout-title">What this document explicitly does not do</div>Does not design any specific AI feature, select an embedding model, or commit to a vendor. The central claim: the scaling decision already made (decouple via broker) is the same decision that buys AI-readiness — there is no separate "make it AI-ready" architecture to design.</div>
+</article>
+</section>
+
+<div class="footer-note">
+URL Shortener &middot; v2 Architecture &amp; Scalability Design Review &middot; 27 consideration documents, scoped to scalability only. Security posture in general, cost, and team process are deferred to a later review pass.
+</div>
+
+</main>
+</div>
+</div>
+
+</body>
+</html>
