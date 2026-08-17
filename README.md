@@ -44,6 +44,18 @@ The implementation lives in **`src/`** — an ASP.NET Core (.NET 9) solution,
 [`documentation/02-design/v3-mvp/design/api-project-structure.md`](documentation/02-design/v3-mvp/design/api-project-structure.md).
 See that folder's own `README.md` for how to run it locally.
 
+**Short-code generation algorithm:** the shipped code generates a random
+7-character base62 candidate and retries on collision (see
+[`fn-create.md` §6](documentation/02-design/v1/design/fn-create.md)) — a
+deliberately simple choice, not the more elaborate pre-allocated-ID-block
+scheme the v2 review lands on for extreme scale. Seven different generation
+strategies were actually surveyed, with the collision math worked out for
+each, in [`28-short-key-generation-approaches.md`](documentation/02-design/v2/design/considerations/28-short-key-generation-approaches.md);
+the simple retry approach remains correct and adequate at this project's real
+scale, and building the more sophisticated version wasn't worth the time for
+an MVP that doesn't need it yet — the same "as simple as possible, as
+complicated as necessary" principle discussed below.
+
 ## Repository layout
 
 ```
