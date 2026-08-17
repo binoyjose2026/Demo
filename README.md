@@ -98,7 +98,7 @@ than lost.
 
 **On methodology — AI-assisted versus AI-agentic.** I approached this as more
 than a coding exercise; fundamentally, it's a demonstration of using AI
-effectively in software engineering, and the [engineering approach](client-deliverables/approach/developer-approach.html)
+effectively in software engineering, and the [engineering approach](documentation/00-getting-started/01-start/developer-approach.html)
 write-up goes into that in more depth. Given that framing, I deliberately chose
 an **AI-assisted** approach — a human directing, reviewing, and correcting AI
 output at every step — over a fully autonomous **AI-agentic** approach, where an
