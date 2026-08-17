@@ -1,6 +1,6 @@
 using UrlShortener.Domain.Entities;
 
-namespace UrlShortener.Domain.ShortUrls;
+namespace UrlShortener.Domain.ShortUrls.Abstractions;
 
 /// <summary>
 /// Read-through cache seam for the hot redirect lookup (ANFR-01/ANFR-05/ANFR-06 --

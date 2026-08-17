@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UrlShortener.Application.Common;
-using UrlShortener.Application.ShortUrls;
+using UrlShortener.Application.ShortUrls.Services;
 
 namespace UrlShortener.Application;
 

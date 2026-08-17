@@ -1,4 +1,4 @@
-namespace UrlShortener.Domain.ShortUrls;
+namespace UrlShortener.Domain.ShortUrls.Constants;
 
 /// <summary>
 /// Named constants instead of magic numbers, per coding-guidelines.md §4. These are

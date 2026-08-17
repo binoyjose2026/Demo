@@ -1,4 +1,4 @@
-namespace UrlShortener.Application.ShortUrls;
+namespace UrlShortener.Application.ShortUrls.Dtos;
 
 /// <summary>
 /// Response returned after a short URL is successfully created.

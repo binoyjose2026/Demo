@@ -1,6 +1,6 @@
 using UrlShortener.Domain.Entities;
 
-namespace UrlShortener.Domain.ShortUrls;
+namespace UrlShortener.Domain.ShortUrls.Abstractions;
 
 /// <summary>
 /// Fire-and-forget domain-event publishing seam for the create flow -- mirrors

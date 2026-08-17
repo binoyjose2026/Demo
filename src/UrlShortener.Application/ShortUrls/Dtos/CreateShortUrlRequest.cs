@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace UrlShortener.Application.ShortUrls;
+namespace UrlShortener.Application.ShortUrls.Dtos;
 
 /// <summary>
 /// Request payload to create a new short URL (AF-01). Bound directly from the HTTP request body.

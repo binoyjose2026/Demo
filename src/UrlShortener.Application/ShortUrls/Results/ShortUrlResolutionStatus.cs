@@ -1,4 +1,4 @@
-namespace UrlShortener.Application.ShortUrls;
+namespace UrlShortener.Application.ShortUrls.Results;
 
 /// <summary>
 /// Outcome of resolving a short code (AF-02, AF-06). Kept as an explicit enum (not a

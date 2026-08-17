@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using UrlShortener.Application.ShortUrls;
+using UrlShortener.Application.ShortUrls.Results;
+using UrlShortener.Application.ShortUrls.Services;
 using UrlShortener.Domain.Entities;
 using UrlShortener.Domain.Repositories;
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Domain.ShortUrls.Abstractions;
 using Xunit;
 
 namespace UrlShortener.Application.Tests.ShortUrls;

@@ -1,5 +1,5 @@
 using UrlShortener.Domain.Entities;
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Domain.ShortUrls.Abstractions;
 
 namespace UrlShortener.Infrastructure.Messaging;
 

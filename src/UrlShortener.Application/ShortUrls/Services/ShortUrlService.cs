@@ -1,12 +1,14 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UrlShortener.Application.Common;
+using UrlShortener.Application.ShortUrls.Dtos;
 using UrlShortener.Domain.Entities;
 using UrlShortener.Domain.Exceptions;
 using UrlShortener.Domain.Repositories;
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Domain.ShortUrls.Abstractions;
+using UrlShortener.Domain.ShortUrls.Constants;
 
-namespace UrlShortener.Application.ShortUrls;
+namespace UrlShortener.Application.ShortUrls.Services;
 
 /// <summary>
 /// Create-short-URL use case (AF-01, AF-03, AF-04). Thin orchestration only -- validation

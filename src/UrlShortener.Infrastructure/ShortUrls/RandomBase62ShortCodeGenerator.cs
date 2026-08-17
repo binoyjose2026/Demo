@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Domain.ShortUrls.Abstractions;
 
 namespace UrlShortener.Infrastructure.ShortUrls;
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using UrlShortener.Application.ShortUrls;
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Application.ShortUrls.Results;
+using UrlShortener.Application.ShortUrls.Services;
+using UrlShortener.Domain.ShortUrls.Constants;
 
 namespace UrlShortener.Api.Controllers;
 

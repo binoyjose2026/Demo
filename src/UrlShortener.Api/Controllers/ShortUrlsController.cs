@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using UrlShortener.Api.Filters;
-using UrlShortener.Application.ShortUrls;
+using UrlShortener.Application.ShortUrls.Dtos;
+using UrlShortener.Application.ShortUrls.Services;
 
 namespace UrlShortener.Api.Controllers;
 

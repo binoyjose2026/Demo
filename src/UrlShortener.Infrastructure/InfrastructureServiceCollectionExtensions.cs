@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using UrlShortener.Domain.Repositories;
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Domain.ShortUrls.Abstractions;
 using UrlShortener.Infrastructure.Caching;
 using UrlShortener.Infrastructure.Messaging;
 using UrlShortener.Infrastructure.Persistence;

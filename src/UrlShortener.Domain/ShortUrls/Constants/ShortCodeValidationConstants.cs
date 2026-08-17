@@ -1,4 +1,4 @@
-namespace UrlShortener.Domain.ShortUrls;
+namespace UrlShortener.Domain.ShortUrls.Constants;
 
 /// <summary>
 /// Domain-level invariant: the base62 alphabet every system-generated short code is drawn

@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
-using UrlShortener.Application.ShortUrls;
+using UrlShortener.Application.ShortUrls.Dtos;
 using Xunit;
 
 namespace UrlShortener.IntegrationTests.ShortUrls;

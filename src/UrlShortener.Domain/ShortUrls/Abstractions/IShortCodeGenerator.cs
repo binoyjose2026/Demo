@@ -1,4 +1,4 @@
-namespace UrlShortener.Domain.ShortUrls;
+namespace UrlShortener.Domain.ShortUrls.Abstractions;
 
 /// <summary>
 /// Strategy for producing a candidate short code (AF-04). Implementations are swappable

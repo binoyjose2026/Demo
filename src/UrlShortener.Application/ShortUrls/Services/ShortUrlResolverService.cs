@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Logging;
+using UrlShortener.Application.ShortUrls.Results;
 using UrlShortener.Domain.Repositories;
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Domain.ShortUrls.Abstractions;
 
-namespace UrlShortener.Application.ShortUrls;
+namespace UrlShortener.Application.ShortUrls.Services;
 
 /// <summary>
 /// Fetch/redirect use case (AF-02, AF-06). The single place resolution business rules

@@ -1,4 +1,4 @@
-using UrlShortener.Domain.ShortUrls;
+using UrlShortener.Domain.ShortUrls.Constants;
 
 namespace UrlShortener.Domain.Exceptions;
 
