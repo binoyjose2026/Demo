@@ -11,6 +11,7 @@ If you're opening this project cold, start here:
 - **[Getting started](documentation/00-getting-started/01-start/readme.md)** — the
   full index: project intent, requirements, design docs, and the working code,
   all in one place.
+- **[Documentation index](documentation/readme.md)** — a shorter, top-level map of the `documentation/` tree, linking out to each phase.
 - **[Engineering approach](client-deliverables/approach/developer-approach.html)** —
   a short, readable explanation of why most of the time went into design and
   the shipped code is a deliberately minimal MVP.
