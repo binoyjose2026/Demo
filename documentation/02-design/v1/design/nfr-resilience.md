@@ -152,7 +152,7 @@ Conceptual shape (registered once in `Infrastructure`'s DI extension method, alo
 
 ```csharp
 // Infrastructure/DependencyInjection.cs
-services.AddHttpClient<IMaliciousDomainChecker, MaliciousDomainChecker>(client =>
+services.AddHttpClient<IMaliciousUrlChecker, ExternalMaliciousUrlChecker>(client =>
     {
         client.BaseAddress = new Uri(configuration["ModerationCheck:BaseUrl"]!);
     })
@@ -175,16 +175,18 @@ services.AddHttpClient<IMaliciousDomainChecker, MaliciousDomainChecker>(client =
 ```
 
 ```csharp
-public interface IMaliciousDomainChecker
+public interface IMaliciousUrlChecker
 {
     /// <summary>
-    /// Returns true if the domain is flagged as malicious/phishing. Throws
+    /// Returns true if the URL's domain is flagged as malicious/phishing. Throws
     /// TimeoutException (mapped to 503 by the global middleware) if the
     /// check cannot complete within the resilience pipeline's budget.
     /// </summary>
-    Task<bool> IsMaliciousAsync(string domain, CancellationToken cancellationToken);
+    Task<bool> IsFlaggedAsync(Uri url, CancellationToken cancellationToken = default);
 }
 ```
+
+Same interface `nfr-security.md` §4.1 already defines — this section only adds the resilience wrapper (timeout/retry) around the `HttpClient` backing its `Infrastructure` implementation, it does not redefine the contract.
 
 - **Per-attempt timeout** (2s) bounds a single network round-trip; **overall pipeline timeout** (5s) bounds the whole create-link request's tolerance for the moderation dependency, so a flaky external service cannot make link creation hang indefinitely — this is what keeps `ANFR-04`'s "degrade gracefully" true even when a *third-party* dependency, not just the local database, is unhealthy.
 - **Retry only idempotent GET-style reputation lookups**, and only on transient conditions (timeout, 5xx, connection failure) — never retry on a definitive "this domain is flagged" response, which is a real result, not a transient failure.
@@ -192,7 +194,7 @@ public interface IMaliciousDomainChecker
 
 ### 4.3 Explicit v1 placeholder note
 
-> **Exception (documented placeholder):** As of this document, the malicious-domain check itself (`IMaliciousDomainChecker` and its concrete adapter) is **not yet implemented** — only its interface contract and this resilience wrapper are designed. The retry/timeout configuration above (attempt counts, delays, thresholds) is a reasonable v1 starting point, not a tuned value; it should be revisited once a real moderation provider is selected and its actual latency/error characteristics are known. Until the moderation check is built, `IsMaliciousAsync` may be backed by a no-op/allow-all stub in `Infrastructure` so the create-link flow is not blocked on this dependency — that stub must be clearly named (e.g., `NoOpMaliciousDomainChecker`) and swapped out, not left silently permanent.
+> **Exception (documented placeholder):** As of this document, the malicious-domain check itself (`IMaliciousUrlChecker` and its concrete adapter) is **not yet implemented** — only its interface contract and this resilience wrapper are designed. The retry/timeout configuration above (attempt counts, delays, thresholds) is a reasonable v1 starting point, not a tuned value; it should be revisited once a real moderation provider is selected and its actual latency/error characteristics are known. Until the moderation check is built, `IsFlaggedAsync` may be backed by a no-op/allow-all stub in `Infrastructure` so the create-link flow is not blocked on this dependency — that stub must be clearly named (e.g., `NoOpMaliciousUrlChecker`) and swapped out, not left silently permanent.
 
 ---
 

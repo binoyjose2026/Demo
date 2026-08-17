@@ -1,6 +1,6 @@
 # 01 — Create (Write) Path: Extreme Scalability Overview
 
-**Series:** v2 Scalability Review (documents 02–07)
+**Series:** v2 Scalability Review — this overview plus companion documents 03–07 and 20 (see Section 6, "Where to Go Next")
 **Status:** Draft — architectural exploration, not an implementation commitment
 **Scope of this document:** Overview only. Each numbered concern below is drilled into by a dedicated companion document (see Section 6, "Where to Go Next"). This document does not duplicate their content — it frames *why* each is needed and how they fit together.
 

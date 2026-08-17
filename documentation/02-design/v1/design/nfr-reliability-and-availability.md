@@ -1,7 +1,7 @@
 # Reliability & Availability Design
 
 **Layer:** Cross-cutting (Api, Application, Infrastructure)
-**Traceability:** ANFR-01 (redirect availability), ANFR-02 (stable resolution), ANFR-03 (durability), ANFR-04 (graceful degradation) — see `requirement.app.non-functional.md`. Scope decisions from `00-getting-started/in-scope/01-summary.md` (Q7, Q35) and `00-getting-started/out-of-scope/01-summary.md` (Q35–Q37).
+**Traceability:** ANFR-01 (redirect availability), ANFR-02 (stable resolution), ANFR-03 (durability), ANFR-04 (graceful degradation) — see `requirement.app.non-functional.md`. Scope decisions from `00-getting-started/02-in-scope/01-summary.md` (Q7, Q35) and `00-getting-started/03-out-of-scope/01-summary.md` (Q35–Q37).
 **Consistent with:** `UrlShortener/engineering-standards/guidelines/design-guidelines.md`, `UrlShortener/engineering-standards/guidelines/data-design-guidelines.md`, `UrlShortener/engineering-standards/guidelines/coding-guidelines.md`.
 
 ---

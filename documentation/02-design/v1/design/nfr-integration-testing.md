@@ -156,7 +156,7 @@ public class ShortUrlsEndpointTests : IClassFixture<UrlShortenerWebApplicationFa
 
         // Assert — analytics reflects the redirect that just happened
         Assert.Equal(HttpStatusCode.OK, analyticsResponse.StatusCode);
-        Assert.Equal(1, analytics!.AccessCount);
+        Assert.Equal(1, analytics!.TotalClickCount);
     }
 
     [Fact]

@@ -116,7 +116,7 @@ public class ShortUrlServiceTests
         mockUnitOfWork.Setup(u => u.Repository<ShortUrl>()).Returns(mockRepository.Object);
 
         var mockCodeGenerator = new Mock<IShortCodeGenerator>();
-        mockCodeGenerator.Setup(g => g.Generate()).Returns("abc123");
+        mockCodeGenerator.Setup(g => g.GenerateCandidate()).Returns("abc123");
 
         var service = new ShortUrlService(mockUnitOfWork.Object, mockCodeGenerator.Object);
         var request = new CreateShortUrlRequest { OriginalUrl = "https://example.com/very/long/path" };

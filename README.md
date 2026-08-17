@@ -95,6 +95,24 @@ design principle I tried to hold throughout: keep things as simple as possible,
 but as complicated as necessary — no simpler, and no more complicated, than the
 problem actually demands.
 
+The same restraint applies to the resilience-pattern family — [Circuit Breaker](documentation/02-design/v2/design/considerations/18-circuit-breaker.md),
+[Bulkhead](documentation/02-design/v2/design/considerations/19-bulkhead.md), and
+[Retry/Backoff/Jitter](documentation/02-design/v2/design/considerations/15-retry.md),
+none of which are wired into the shipped MVP. This is a genuinely different kind
+of "no" than Kafka or Outbox, and worth being precise about: those two were
+rejected as unnecessary *at any scale this system plausibly reaches*, while
+Circuit Breaker and its relatives are deferred only because the MVP's actual
+dependency surface doesn't yet call for them — one datastore, no external calls
+on the hot path, nothing to trip away *from* yet. In a real production version
+of this service — multiple downstream dependencies, an external moderation
+check, a cache tier — these patterns become directly relevant, not optional
+polish, and the v2 documents linked above already work out concrete trip
+conditions, timeout budgets, and concurrency limits for exactly that scenario,
+rather than leaving it as a vague "we'd add resilience later." The full
+reasoning for every pattern considered and either adopted, deferred, or
+rejected — with the numbers behind each call — lives in the [design
+considerations](documentation/02-design/v2/design/considerations/).
+
 **The v1 → v2 → v3 arc was a deliberate methodology, not scope creep.** v1 is
 intentionally scoped simply, matched to the known and fairly narrow requirements
 in front of it. v2 then deliberately pushes to the opposite extreme — a

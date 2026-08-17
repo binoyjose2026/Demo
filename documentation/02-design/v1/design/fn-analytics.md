@@ -3,7 +3,7 @@
 **Version:** v1
 **Status:** Draft
 **Layer:** Cross-cutting (triggered from the redirect/fetch flow; exposed via its own retrieval endpoint)
-**Traceability:** AF-08, AF-09, AF-10 (`requirement.app.functional.md`); Q24, Q25, Q27, Q33 (`01-requirements/v1-requirements/.../02-answer.md`, summarized in `00-getting-started/in-scope/01-summary.md` and `00-getting-started/out-of-scope/01-summary.md`)
+**Traceability:** AF-08, AF-09, AF-10 (`requirement.app.functional.md`); Q24, Q25, Q27, Q33 (`01-requirements/v1-requirements/.../02-answer.md`, summarized in `00-getting-started/02-in-scope/01-summary.md` and `00-getting-started/03-out-of-scope/01-summary.md`)
 **Companion docs:** `fn-fetch.md` (redirect/resolve flow that triggers event recording), `fn-create.md` (short URL creation), `nfr-performance.md` (redirect latency budget)
 
 ---

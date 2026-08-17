@@ -118,7 +118,7 @@ The example below shows the shape for the moderation-check `HttpClient` — a **
 
 ```csharp
 // Infrastructure/DependencyInjection.cs
-services.AddHttpClient<IMaliciousDomainChecker, MaliciousDomainChecker>(client =>
+services.AddHttpClient<IMaliciousUrlChecker, ExternalMaliciousUrlChecker>(client =>
     {
         client.BaseAddress = new Uri(configuration["ModerationCheck:BaseUrl"]!);
     })

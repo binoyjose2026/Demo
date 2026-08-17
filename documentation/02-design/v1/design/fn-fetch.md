@@ -62,9 +62,9 @@ Browser              RedirectController        IShortUrlResolverService      ISh
    ├────────────────────────►                             │                          │                          │
    │                         │  ResolveAsync(code)         │                          │                          │
    │                         ├────────────────────────────►                          │                          │
-   │                         │                             │  GetByShortCodeAsync(code)                          │
+   │                         │                             │  GetByCodeAsync(code)    │                          │
    │                         │                             ├─────────────────────────►                          │
-   │                         │                             │                          │  SELECT ... WHERE ShortCode = @code
+   │                         │                             │                          │  SELECT ... WHERE Code = @code
    │                         │                             │                          │      AND IsDeleted = 0 (global filter)
    │                         │                             │                          ├─────────────────────────►
    │                         │                             │                          ◄─────────────────────────┤
@@ -107,7 +107,7 @@ public class ShortUrlResolverService : IShortUrlResolverService
 
     public async Task<ShortUrlResolutionResult> ResolveAsync(string shortCode, CancellationToken cancellationToken = default)
     {
-        var shortUrl = await _repository.GetByShortCodeAsync(shortCode, cancellationToken);
+        var shortUrl = await _repository.GetByCodeAsync(shortCode, cancellationToken);
 
         if (shortUrl is null)
         {
@@ -154,27 +154,27 @@ public class RedirectController : ControllerBase
 
 ## 5. Lookup Path & Indexing
 
-The lookup is a single, indexed point read: find the one `ShortUrl` row whose `ShortCode` matches the requested code. This is an entity-specific repository method, exactly the case `design-guidelines.md` Section 2 calls out for going beyond generic `IRepository<T>` CRUD:
+The lookup is a single, indexed point read: find the one `ShortUrl` row whose `Code` matches the requested code. This is an entity-specific repository method, exactly the case `design-guidelines.md` Section 2 calls out for going beyond generic `IRepository<T>` CRUD:
 
 ```csharp
 public interface IShortUrlRepository : IRepository<ShortUrl>
 {
     /// <summary>Standard lookup — respects the global soft-delete filter (excludes deactivated/removed links).</summary>
-    Task<ShortUrl?> GetByShortCodeAsync(string shortCode, CancellationToken cancellationToken = default);
+    Task<ShortUrl?> GetByCodeAsync(string shortCode, CancellationToken cancellationToken = default);
 
     /// <summary>Lookup including soft-deleted/expired rows — used only by metadata (Section 9), never by redirect.</summary>
-    Task<ShortUrl?> GetByShortCodeIncludingInactiveAsync(string shortCode, CancellationToken cancellationToken = default);
+    Task<ShortUrl?> GetByCodeIncludingInactiveAsync(string shortCode, CancellationToken cancellationToken = default);
 }
 ```
 
-- `ShortCode` must carry a **unique index** (`IX_ShortUrl_ShortCode`), per `data-design-guidelines.md` Section 7 ("any column used in a frequent `WHERE` ... clause"). This is the single hottest query in the system (ANFR-01, ANFR-05, ANFR-06), so it must resolve as an index seek, never a table scan.
+- `Code` must carry a **unique index** (`IX_ShortUrl_Code`), per `data-design-guidelines.md` Section 7 ("any column used in a frequent `WHERE` ... clause"). This is the single hottest query in the system (ANFR-01, ANFR-05, ANFR-06), so it must resolve as an index seek, never a table scan.
 - The lookup relies on the surrogate `Id`/`RowVersion`/soft-delete conventions from `data-design-guidelines.md` unchanged — `ShortUrl` is an ordinary `AuditableEntity`-derived table, no bespoke schema behavior.
-- `GetByShortCodeAsync` deliberately does **not** join or eager-load anything beyond the `ShortUrl` row itself (no analytics aggregates, no owner details) — the redirect path only needs `OriginalUrl` and `ExpiresAtUtc` to make its decision, keeping the hot path's query as cheap as possible.
+- `GetByCodeAsync` deliberately does **not** join or eager-load anything beyond the `ShortUrl` row itself (no analytics aggregates, no owner details) — the redirect path only needs `OriginalUrl` and `ExpiresAtUtc` to make its decision, keeping the hot path's query as cheap as possible.
 
 ```csharp
 public class ShortUrl : AuditableEntity
 {
-    public string ShortCode { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
     public string OriginalUrl { get; set; } = string.Empty;
     public DateTime? ExpiresAtUtc { get; set; }   // null = no expiry (Section 7)
     // IsDeleted / DeletedAtUtc (from AuditableEntity) represent deactivation/removal — see Section 7.
@@ -185,11 +185,11 @@ public class ShortUrl : AuditableEntity
 
 ## 6. Immutability Guarantee & Its Design Payoff (Q7, ANFR-02)
 
-**Decision (Q7):** the `OriginalUrl` behind a given `ShortCode` never changes once created. There is no "edit URL" operation anywhere in this design — `fn-create.md` is the only writer of `OriginalUrl`, and it writes it exactly once, at insert. ANFR-02 ("a short code shall consistently resolve to the same original URL for the lifetime of that mapping") is this same guarantee stated as a reliability requirement.
+**Decision (Q7):** the `OriginalUrl` behind a given `Code` never changes once created. There is no "edit URL" operation anywhere in this design — `fn-create.md` is the only writer of `OriginalUrl`, and it writes it exactly once, at insert. ANFR-02 ("a short code shall consistently resolve to the same original URL for the lifetime of that mapping") is this same guarantee stated as a reliability requirement.
 
 This guarantee is what the fetch design is built around:
 
-- **Cache safety without invalidation complexity.** Because `(ShortCode → OriginalUrl)` is write-once, a resolved mapping can be cached aggressively — in-process, distributed, or CDN-fronted — with no cache-invalidation-on-update problem to solve (there is no update). The only cache event this design needs to reason about is *removal* (deactivation/expiry — Section 7), not staleness of the URL value itself. The specific caching technology, TTL, and invalidation trigger are defined in `nfr-scalability.md` and are not repeated here — this document only establishes that caching is *safe*, because of Q7/ANFR-02.
+- **Cache safety without invalidation complexity.** Because `(Code → OriginalUrl)` is write-once, a resolved mapping can be cached aggressively — in-process, distributed, or CDN-fronted — with no cache-invalidation-on-update problem to solve (there is no update). The only cache event this design needs to reason about is *removal* (deactivation/expiry — Section 7), not staleness of the URL value itself. The specific caching technology, TTL, and invalidation trigger are defined in `nfr-scalability.md` and are not repeated here — this document only establishes that caching is *safe*, because of Q7/ANFR-02.
 - **No cache-coherency/versioning need for `OriginalUrl` itself.** Unlike most cached data, there is no `RowVersion`-driven "is my cached copy stale" check required for the URL value — immutability makes that question moot for as long as the mapping is active.
 
 > This is a deliberate reliance on a requirement decision, not an assumption: if Q7 is ever revisited (URLs become editable), every cache layer built on this guarantee must be revisited too. That coupling is called out here explicitly so it isn't rediscovered as a bug later.
@@ -211,8 +211,8 @@ Two independent lifecycle mechanisms feed into "is this short code still resolva
 **Decision:** deactivating/removing a link (AF-07) is modeled as an ordinary soft delete — `IsDeleted = true`, `DeletedAtUtc` set — using the exact `IsDeleted`/`DeletedAtUtc` columns every table already has per `data-design-guidelines.md` Section 5. No separate `IsActive`/`Status` flag is introduced.
 
 - This is a deliberate avoidance of a redundant status column: `IsDeleted` already means "not resolvable anymore," which is precisely what deactivation means for fetch purposes. Adding a second flag with overlapping meaning would violate the "avoid redundant/duplicated design" principle this design follows throughout.
-- Because `IsDeleted` is already enforced by the **global EF Core query filter** on every standard query (`data-design-guidelines.md` Section 5), `GetByShortCodeAsync` automatically excludes deactivated/removed links with zero extra code in the resolver — deactivation "just works" through the existing repository convention.
-- Q11 ("a deactivated/removed short code is retired permanently and never reused") is satisfied for free: nothing in this design ever re-issues a `ShortCode` that has a row (deleted or not) — that invariant belongs to `fn-create.md`'s code-generation/collision logic, referenced here only to confirm fetch does not need to special-case it.
+- Because `IsDeleted` is already enforced by the **global EF Core query filter** on every standard query (`data-design-guidelines.md` Section 5), `GetByCodeAsync` automatically excludes deactivated/removed links with zero extra code in the resolver — deactivation "just works" through the existing repository convention.
+- Q11 ("a deactivated/removed short code is retired permanently and never reused") is satisfied for free: nothing in this design ever re-issues a `Code` that has a row (deleted or not) — that invariant belongs to `fn-create.md`'s code-generation/collision logic, referenced here only to confirm fetch does not need to special-case it.
 - Q12 (out of scope: no restore window) means fetch never needs a "reactivate" path — once `IsDeleted = true`, it is final from the resolver's point of view.
 
 ### 7.3 Why the resolver still distinguishes `NotFound` vs `Expired` internally
@@ -252,7 +252,7 @@ Both cases return the same branded HTML body (Q10); the status code difference i
 |---|---|---|
 | Consumer | End user's browser, following the link. | The link's creator, checking on it programmatically. |
 | Visibility of inactive links | Deactivated/expired links are indistinguishable from "not found" (Section 8) — no lifecycle detail is exposed to an anonymous follower. | Must expose accurate lifecycle status (`Active` / `Expired` / `Deactivated`) so the creator can tell *why* a link stopped working — this is the point of AF-05. |
-| Repository call | `GetByShortCodeAsync` — respects the global soft-delete filter (Section 5). | `GetByShortCodeIncludingInactiveAsync` — deliberately bypasses the filter (`IgnoreQueryFilters()`), so a deactivated/expired row is still returned for status reporting. |
+| Repository call | `GetByCodeAsync` — respects the global soft-delete filter (Section 5). | `GetByCodeIncludingInactiveAsync` — deliberately bypasses the filter (`IgnoreQueryFilters()`), so a deactivated/expired row is still returned for status reporting. |
 | Response shape | HTTP redirect or branded HTML (Section 8). | JSON DTO (`ShortUrlMetadataResponse`), `ProblemDetails` on genuine 404. |
 | Triggers AF-08 analytics event? | **Yes** — a redirect is a real access/click (Section 11). | **No** — see below. |
 
@@ -260,7 +260,7 @@ Both cases return the same branded HTML body (Q10); the status code difference i
 
 ```csharp
 public sealed record ShortUrlMetadataResponse(
-    string ShortCode,
+    string Code,
     string OriginalUrl,
     DateTime CreatedAtUtc,
     DateTime? ExpiresAtUtc,
@@ -281,7 +281,7 @@ This looks counter-intuitive given Section 6's immutability guarantee — "the U
   - **AF-06/AF-07/Section 7** — expiration and deactivation must take effect immediately for new requests. A browser holding a cached `301` would keep redirecting locally even after the link is deactivated or expires, since it never asks our server again.
 - **302 Found** is not cached as a standing redirect by default, so every access — first or hundredth — hits `RedirectController`, gets a fresh resolution (Section 4), and has the opportunity to be blocked by Section 7/8's checks and counted by Section 11's analytics hook.
 
-**Reconciling with Section 6:** the immutability guarantee (Q7) is what makes it *safe* to cache the `(ShortCode → OriginalUrl)` mapping aggressively **at our own application/cache layer** (Section 6) — but it says nothing about whether the *HTTP redirect response itself* should be cached by clients outside our control. Those are two different caching questions with two different answers: application-layer caching of the mapping — yes, aggressively; client-level caching of the redirect response — no, because deactivation/expiry/analytics all need every request to reach the server. 302 is the choice that keeps the server authoritative on every request while still letting the *lookup* behind that request be served from a fast, safely-cached path.
+**Reconciling with Section 6:** the immutability guarantee (Q7) is what makes it *safe* to cache the `(Code → OriginalUrl)` mapping aggressively **at our own application/cache layer** (Section 6) — but it says nothing about whether the *HTTP redirect response itself* should be cached by clients outside our control. Those are two different caching questions with two different answers: application-layer caching of the mapping — yes, aggressively; client-level caching of the redirect response — no, because deactivation/expiry/analytics all need every request to reach the server. 302 is the choice that keeps the server authoritative on every request while still letting the *lookup* behind that request be served from a fast, safely-cached path.
 
 ---
 
@@ -295,7 +295,7 @@ A `Resolved` outcome in Section 4's flow triggers an access-event recording as a
 
 - **Single Responsibility**: `RedirectController` only shapes HTTP; `ShortUrlResolverService` only decides resolvability; `ShortUrlRepository` only queries. Metadata's read path is a separate service method (Section 9), not an overloaded resolver.
 - **Open/Closed**: expiration and deactivation are each an independent check in `ResolveAsync`; a future third lifecycle rule (e.g., a rate-limited/quarantined status) can be added as another branch without changing the repository or controller.
-- **Interface Segregation**: `IShortUrlRepository` adds exactly the two methods fetch needs (`GetByShortCodeAsync`, `GetByShortCodeIncludingInactiveAsync`) beyond generic `IRepository<T>`, rather than a bloated interface.
+- **Interface Segregation**: `IShortUrlRepository` adds exactly the two methods fetch needs (`GetByCodeAsync`, `GetByCodeIncludingInactiveAsync`) beyond generic `IRepository<T>`, rather than a bloated interface.
 - **Dependency Inversion**: `RedirectController` and `ShortUrlsController` (metadata) depend on `IShortUrlResolverService`/`Application` service interfaces only — never on `AppDbContext` or `IShortUrlRepository` directly, consistent with `design-guidelines.md` Section 3.
 
 ---
