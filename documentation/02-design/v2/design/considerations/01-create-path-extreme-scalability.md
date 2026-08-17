@@ -135,14 +135,14 @@ This overview sets up six follow-on documents, each owning one piece of the extr
 
 | Doc | Title | What it answers |
 |---|---|---|
-| **02** | Outbox Pattern | How to guarantee the create write and its downstream event publish don't diverge (Section 5.3) |
+| **20** | Outbox Pattern | How to guarantee the create write and its downstream event publish don't diverge (Section 5.3) |
 | **03** | Elasticsearch vs. SQL Server | Whether/where a search-oriented store fits versus the relational primary discussed in Section 4 |
 | **04** | Elasticsearch vs. MongoDB | Document-store vs. search-engine trade-off for the same data-placement question as doc 03 |
 | **05** | Kafka Comparison | Whether Kafka specifically is the right event-transport choice for the async publishing need in Section 5, at this event volume |
-| **06** | Redis Caching | The distributed-cache tier that replaces v1's per-instance `IMemoryCache` (Section 1.3), including cache invalidation on create |
-| **07** | Output Caching / BFF / CDN | Read-path throughput (fetches) via output caching, a BFF layer, and CDN — the read-side counterpart to this write-path document |
+| **06** | Output Caching / BFF / CDN | Read-path throughput (fetches) via output caching, a BFF layer, and CDN — the read-side counterpart to this write-path document |
+| **07** | Redis Caching | The distributed-cache tier that replaces v1's per-instance `IMemoryCache` (Section 1.3), including cache invalidation on create |
 
-**Read this document first, then whichever of 02-07 matches the question you're chasing.** Docs 02 and 05 together answer "how does the create path publish events safely and at scale" (Section 5). Docs 03 and 04 together answer "where does data live once it's off a single SQLite file" (Section 4). Docs 06 and 07 are primarily read-path documents but are listed here because cache invalidation is triggered *by* the create path (Section 1.3) — a write-path concern with a read-path payoff.
+**Read this document first, then whichever of 03-07 or 20 matches the question you're chasing.** Docs 20 and 05 together answer "how does the create path publish events safely and at scale" (Section 5). Docs 03 and 04 together answer "where does data live once it's off a single SQLite file" (Section 4). Docs 06 and 07 are primarily read-path documents but are listed here because cache invalidation is triggered *by* the create path (Section 1.3) — a write-path concern with a read-path payoff.
 
 ---
 

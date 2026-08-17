@@ -128,9 +128,10 @@ Every non-2xx response is `ProblemDetails`/`ValidationProblemDetails` (`applicat
 
 ## 5. Testing
 
-- **Unit** (`UrlShortener.Application.Tests`, Moq + xUnit): `ShortUrlServiceTests` (valid create; missing/malformed/disallowed-scheme (`ftp:`, `javascript:`)/over-length URL, each asserting its specific exception type; collision retry succeeds; retry budget exhausted) and `ShortUrlResolverServiceTests` (resolved, not-found, empty/whitespace code short-circuits without querying cache/repository, cache-write-on-miss). 15 tests, all passing.
-- **Integration** (`UrlShortener.IntegrationTests`, `WebApplicationFactory<Program>` + private in-memory SQLite): create → fetch/redirect happy path; missing/malformed/disallowed-scheme/over-length URL → `ValidationProblemDetails`; unknown/valid-format code, empty code segment, and malformed (invalid-alphabet) code segment → `404`/`400`; plus a dedicated `RowVersion` optimistic-concurrency test against `AppDbContext` directly (item 17, no update endpoint exists in this MVP to exercise it through the API). 10 tests, all passing.
-- See `exception-and-logging-strategy.md` §5 for the full edge-case-to-test mapping.
+- **Unit** (`UrlShortener.Application.Tests`, Moq + xUnit): `ShortUrlServiceTests` (valid create; missing/malformed/disallowed-scheme (`ftp:`, `javascript:`)/over-length URL, each asserting its specific exception type; collision retry succeeds; retry budget exhausted; event-publisher failure is swallowed and logged) and `ShortUrlResolverServiceTests` (resolved, not-found, cache hit/miss, empty/whitespace code short-circuits without querying cache/repository, cache-write-on-miss). 17 tests, all passing.
+- **Integration** (`UrlShortener.IntegrationTests`, `WebApplicationFactory<Program>` + private in-memory SQLite): `ShortUrlsEndpointTests` (create → fetch/redirect happy path; missing/malformed/disallowed-scheme/over-length URL → `ValidationProblemDetails`; unknown/valid-format code, empty code segment, and malformed (invalid-alphabet) code segment → `404`/`400`); `ShortUrlConcurrencyTests` (a dedicated `RowVersion` optimistic-concurrency test against `AppDbContext` directly — item 17, no update endpoint exists in this MVP to exercise it through the API); `HealthCheckTests` (`/health/live`, `/health/ready` — §6.2); `CorrelationIdTests` (`X-Correlation-Id` generated/echoed/propagated into `ProblemDetails` — §6.8). 15 tests, all passing.
+- **Total: 32 tests, all passing** (`src/test/logs/`).
+- See `exception-and-logging-strategy.md` §5 for the full edge-case-to-test mapping (pre-hardening subset; health-check and correlation-ID tests are hardening additions, not edge-case coverage).
 
 ## 6. Post-MVP hardening additions
 
