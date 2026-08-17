@@ -527,6 +527,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
     <ul>
       <li><a href="#doc-26"><span class="num">26</span> Infrastructure Design (Edge → Data)</a></li>
       <li><a href="#doc-27"><span class="num">27</span> DevOps — Out of Scope</a></li>
+      <li><a href="#doc-30"><span class="num">30</span> Localization &amp; Custom Errors — Out of Scope</a></li>
     </ul>
   </div>
 
@@ -544,7 +545,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
 <div class="top-hero">
   <div class="eyebrow">Design Review &middot; v2 &middot; Scalability</div>
   <h1>URL Shortener — v2 Scalability Design Review</h1>
-  <p class="lede">A scoped, deep review of what it takes to run this C#/.NET 9 URL shortener at extreme scale — 27 numbered consideration documents covering the create path, storage, caching, messaging, resilience, security, infrastructure, and forward-looking AI readiness.</p>
+  <p class="lede">A scoped, deep review of what it takes to run this C#/.NET 9 URL shortener at extreme scale — 28 numbered consideration documents covering the create path, storage, caching, messaging, resilience, security, infrastructure, and forward-looking AI readiness.</p>
 </div>
 
 <section id="overview">
@@ -565,7 +566,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
 
 <section id="key-decisions">
 <h2>Key Decisions at a Glance</h2>
-<p class="cat-desc">The headline verdict from each of the 27 documents, before the detailed sections below. Read this first for the shape of the whole review; read the sections below for the numbers and trade-offs behind each verdict.</p>
+<p class="cat-desc">The headline verdict from each of the 28 documents, before the detailed sections below. Read this first for the shape of the whole review; read the sections below for the numbers and trade-offs behind each verdict.</p>
 
 <div class="table-wrap">
 <table class="kd-table">
@@ -597,6 +598,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
 <tr><td>Observability</td><td>OpenTelemetry (traces/metrics/logs) + Grafana stack (Loki, Tempo, Mimir) — separate from the analytics Elasticsearch cluster</td><td>A single symptom now spans an API instance, a cache node, a broker, a consumer, and a search cluster — needs a request graph, not a log grep</td></tr>
 <tr><td>Infrastructure topology</td><td>Cloudflare CDN → Azure Front Door WAF → Azure Load Balancer → AKS (HPA + KEDA + Cluster Autoscaler) → managed PaaS data tier</td><td>Concrete, named Azure services for every layer the prompt asked for; single region + zone redundancy judged sufficient, not multi-region</td></tr>
 <tr><td>DevOps</td><td><strong>Explicitly out of scope</strong> for this review</td><td>A separate concern from system architecture; folding it in would dilute a review meant to stay finishable</td></tr>
+<tr><td>Localization &amp; custom errors</td><td><strong>Explicitly out of scope</strong> for this review</td><td>Product/UX concerns about message text, not throughput/latency/availability/capacity — orthogonal to a scalability-scoped review</td></tr>
 <tr><td>AI pluggability</td><td>Readiness only, no feature built — broker consumer + Elasticsearch <code>dense_vector</code>, no dedicated vector DB</td><td>The event-driven design already adopted for scaling reasons is the same thing that makes AI extensibility cheap later</td></tr>
 </tbody>
 </table>
@@ -1093,6 +1095,22 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
 </ul>
 <p><strong>Adjacent but distinct:</strong> Doc 26 (infrastructure topology) answers <em>what</em> infrastructure exists and <em>where</em> it runs. DevOps answers <em>how</em> that infrastructure gets built, deployed, and updated over time. Doc 26 should not be mistaken for a DevOps design.</p>
 </article>
+
+<article class="doc-card" id="doc-30">
+<div class="doc-meta"><span class="doc-num">Doc 30</span><span class="badge reject">Out of scope</span></div>
+<h3>Localization &amp; Custom Error Messages — Out of Scope for This Review</h3>
+<p><strong>Decision:</strong> Two related but distinct feature areas are <strong>explicitly excluded</strong> from this review: internationalization/localization (i18n/l10n — translated UI text, translated API error messages, locale detection, resource files) and custom/configurable error messages (editable, branded, or per-tenant message text). Both are product/UX concerns about <em>what text a human reads</em>, not about <em>how the system scales under load</em> — orthogonal to throughput, latency, availability, and capacity, the axes this review is scoped to.</p>
+<div class="section-label">What that exclusion covers</div>
+<ul>
+<li>Resource-file (<code>.resx</code>) organization and translation workflow per supported language</li>
+<li>Locale detection/negotiation (Accept-Language header, user preference, etc.)</li>
+<li>Locale-aware formatting (dates, numbers, timezones)</li>
+<li>A business-configurable error-message catalog (who can edit messages, where they're stored, versioning)</li>
+<li>Per-tenant custom/branded messaging</li>
+</ul>
+<p><strong>Current state (context only):</strong> the API today returns fixed, English-only <code>ProblemDetails</code> error responses — hard-coded, not localized, not configurable. ASP.NET Core's built-in <code>IStringLocalizer</code>/<code>.resx</code> mechanism is named as the standard extension point if localization is ever required, as a forward-pointer, not a design.</p>
+<p><strong>Adjacent but distinct:</strong> the same reasoning Doc 27 used to exclude DevOps as a separate concern from a scalability-focused review applies here — treat localization and custom/configurable error messaging as their own separate, scoped review if and when they become an actual product requirement.</p>
+</article>
 </section>
 
 <!-- ============================================================ -->
@@ -1130,7 +1148,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0
 </section>
 
 <div class="footer-note">
-URL Shortener &middot; v2 Architecture &amp; Scalability Design Review &middot; 27 consideration documents, scoped to scalability only. Security posture in general, cost, and team process are deferred to a later review pass.
+URL Shortener &middot; v2 Architecture &amp; Scalability Design Review &middot; 28 consideration documents, scoped to scalability only. Security posture in general, cost, and team process are deferred to a later review pass.
 </div>
 
 </main>

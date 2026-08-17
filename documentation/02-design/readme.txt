@@ -10,7 +10,7 @@ is kept in full because it answers a different question:
             resilience, reliability/availability, testing).
 
 - v2/       A hypothetical "what would extreme scale require" exploration —
-            roughly 30 documents produced by reviewing the v1 design against
+            28 documents produced by reviewing the v1 design against
             a deliberately aggressive scale target (millions of creates/day,
             tens to hundreds of millions of fetches/day, five-year horizon).
             This is a design/thinking exercise, NOT what was built. Treat it

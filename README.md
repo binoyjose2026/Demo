@@ -16,7 +16,7 @@ If you're opening this project cold, start here:
   a short, readable explanation of why most of the time went into design and
   the shipped code is a deliberately minimal MVP.
 - **[v2 scalability design review](documentation/00-getting-started/01-start/index.html)** —
-  a browsable site walking through ~30 documents on what this system would
+  a browsable site walking through ~28 documents on what this system would
   need if it had to handle extreme scale. See the note below before reading
   this as "the design" — it isn't what was built.
 
@@ -34,7 +34,7 @@ all four are kept for the full picture:
 | **v3 (MVP)** | The **actual shipped system** — a trimmed-down design and implementation covering only create + fetch, with every deferred feature documented rather than silently dropped. |
 
 **This distinction matters:** the v2 review is the largest single body of
-documentation in this repo (~30 documents), which can make it look like the
+documentation in this repo (~28 documents), which can make it look like the
 delivered design. It isn't — v3 is what was actually built and shipped.
 
 ## The working code
@@ -52,6 +52,20 @@ documentation/00-getting-started/01-start/  (also holds the two client-facing HT
 engineering-standards/  Cross-cutting coding/design/data guidelines followed throughout
 src/                    The working .NET solution (the actual shipped MVP)
 ```
+
+## Live Swagger walkthrough
+
+Screenshots from an actual run against the API (`dotnet run`, `ASPNETCORE_ENVIRONMENT=Development`), captured in `src/screenshots/`:
+
+1. **[Swagger UI overview](src/screenshots/01-swagger-overview.jpg)** — both endpoints, with XML-doc descriptions and their requirement-ID traceability (AF-01, AF-02, AF-04, AF-06) visible directly in the UI.
+2. **[Create endpoint — sample request executed](src/screenshots/02-swagger-create-response.jpg)** — `POST /api/v1/short-urls` with a real URL, returning `201` with the generated code, full short URL, and response headers including `x-correlation-id`.
+3. **[Redirect endpoint — attempted from Swagger UI](src/screenshots/03-swagger-redirect-attempt.jpg)** — Swagger's browser-based "Execute" can't follow the resulting cross-origin `302` (a browser CORS limitation on client-side `fetch`, not an API defect); the curl command Swagger generates is the correct way to exercise this endpoint. Verified directly instead:
+   ```
+   $ curl -sD - -o /dev/null http://localhost:5236/CQN4COE
+   HTTP/1.1 302 Found
+   Location: https://www.anthropic.com/engineering/claude-code-best-practices
+   X-Correlation-Id: aca3e9b9-62d0-4ec0-be7e-cc76b891cd67
+   ```
 
 ## A few reflections on how this project was approached
 

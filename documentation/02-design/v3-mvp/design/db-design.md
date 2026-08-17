@@ -2,7 +2,7 @@
 
 **Status:** As-built. Documents the schema actually created by the applied EF Core migration, not an aspirational design.
 **Consistent with:** `UrlShortener/engineering-standards/guidelines/data-design-guidelines.md`.
-**DB file:** `src/db/urlshortner.db` (SQLite), created by `dotnet ef database update` and re-applied automatically on every app startup via `AppDbContext.Database.Migrate()`.
+**DB file:** `src/db/urlshortener.db` (SQLite), created by `dotnet ef database update` and re-applied automatically on every app startup via `AppDbContext.Database.Migrate()`.
 
 ---
 

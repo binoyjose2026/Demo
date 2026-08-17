@@ -33,7 +33,7 @@ dependency-direction change was needed since `Application` already referenced `D
 src/
 ├── UrlShortener.sln
 ├── db/
-│   └── urlshortner.db                     <- real SQLite file, created by `dotnet ef database update`
+│   └── urlshortener.db                    <- real SQLite file, created by `dotnet ef database update`
 ├── UrlShortener.Api/                       <- ASP.NET Core Web API host (webapi template, controllers)
 │   ├── Controllers/
 │   │   ├── ShortUrlsController.cs         <- POST /api/short-urls (AF-01)
@@ -127,7 +127,7 @@ Verified via actual `dotnet add reference` calls:
 - `builder.Host.UseSerilog(...)`, reading from the `Serilog` section of `appsettings.json`/`appsettings.{Environment}.json` — replaces the default `Microsoft.Extensions.Logging` provider entirely, wired **before** `AddApplicationServices`/`AddInfrastructureServices` so every service's `ILogger<T>` is Serilog-backed from the start. `app.UseSerilogRequestLogging()` is registered right after `app.UseExceptionHandler()`. See `exception-and-logging-strategy.md` §1.
 - `AddApplicationServices` / `AddInfrastructureServices` — one DI extension call per layer, per design-guidelines.md §6.
 - `AddProblemDetails()` + `AddExceptionHandler<GlobalExceptionHandler>()` + `app.UseExceptionHandler()` — the standard error response shape (design-guidelines.md §3), implemented via the current idiomatic ASP.NET Core `IExceptionHandler` mechanism rather than hand-rolled middleware.
-- The SQLite connection string is **resolved programmatically** (walks up from the running assembly's location to find `UrlShortener.sln`, then targets `<that folder>/db/urlshortner.db`) so the database file lands at the exact required path (`src/db/urlshortner.db`) regardless of whether the app is launched via `dotnet run`, a built `.exe`, or a test host.
+- The SQLite connection string is **resolved programmatically** (walks up from the running assembly's location to find `UrlShortener.sln`, then targets `<that folder>/db/urlshortener.db`) so the database file lands at the exact required path (`src/db/urlshortener.db`) regardless of whether the app is launched via `dotnet run`, a built `.exe`, or a test host.
 - `context.Database.Migrate()` runs on startup (skipped under the `IntegrationTest` environment, where `UrlShortenerWebApplicationFactory` migrates its own private in-memory connection instead).
 - `public partial class Program { }` is appended so `WebApplicationFactory<Program>` in the separate `IntegrationTests` project can reference the top-level-statement-generated `Program` class.
 
