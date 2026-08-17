@@ -2,7 +2,7 @@
 
 **Version:** v2 (extreme-scalability review)
 **Status:** Draft — architectural consideration, not yet a committed decision
-**Scope:** This document answers one question — *at up to ~100M fetches/day, how should the system record that AF-08's "a click happened" without paying a durable-storage write on every single fetch?* It covers the **write side** of click/stat recording (AF-08/AF-09) using **Redis as a temporary, in-memory staging counter**, batch-flushed to durable storage on a fixed interval. It does not redesign the redirect/resolve mechanics (`v1/design/fn-fetch.md`), the detailed per-click event pipeline (`05-kafka-comaporison.md`/`25-elasticsearch-bulk-indexing.md`), or the Redis short-code lookup cache (`07-redis-caching-and-invalidation.md`) — all three are inputs this document builds on, not outputs of it.
+**Scope:** This document answers one question — *at up to ~100M fetches/day, how should the system record that AF-08's "a click happened" without paying a durable-storage write on every single fetch?* It covers the **write side** of click/stat recording (AF-08/AF-09) using **Redis as a temporary, in-memory staging counter**, batch-flushed to durable storage on a fixed interval. It does not redesign the redirect/resolve mechanics (`v1/design/fn-fetch.md`), the detailed per-click event pipeline (`05-kafka-comparison.md`/`25-elasticsearch-bulk-indexing.md`), or the Redis short-code lookup cache (`07-redis-caching-and-invalidation.md`) — all three are inputs this document builds on, not outputs of it.
 
 **Revision note:** an earlier version of this document focused on a client-facing batch metadata API and internal request-coalescing of Redis *lookups* on the redirect **read** path. That was a misreading of the review scope item — the intended request was *"the fetch stat gathering can be batched with the help of a temp database in Redis,"* i.e. batching the **recording of clicks** (the write side), not the resolution of short codes (the read side). This revision replaces that content with the correct design. A short note on the batch-metadata-API idea is retained in the Appendix for continuity, since it remains a reasonable idea in its own right — it is simply not what this document is about anymore.
 
@@ -10,7 +10,7 @@
 
 **Companion documents (not duplicated here, cross-referenced by filename):**
 - `07-redis-caching-and-invalidation.md` — the *other*, pre-existing use of Redis in this architecture: a shared cache for short-code → redirect-target lookups on the **read** path. This document adds a **second, distinct** use of Redis — a write-side stat-aggregation buffer — and Section 2 below makes the distinction between the two explicit.
-- `05-kafka-comaporison.md` — the event-transport decision for the detailed `UrlClicked` event: fetch → publish event → broker → analytics-indexing consumer → Elasticsearch.
+- `05-kafka-comparison.md` — the event-transport decision for the detailed `UrlClicked` event: fetch → publish event → broker → analytics-indexing consumer → Elasticsearch.
 - `25-elasticsearch-bulk-indexing.md` — bulk-indexes that detailed `UrlClicked` event stream into Elasticsearch. This document's Redis counter is a **different, complementary** mechanism for the simple aggregate "total click count" number (AF-09), not a replacement for that pipeline. Section 5 states this explicitly.
 - `21-background-job-hosting.md` — establishes that periodic, scheduled background work in this system runs as a containerized Worker Service (`BackgroundService`). The flush job designed here is hosted the same way.
 - `v1/design/fn-analytics.md` — AF-09's total click count is the only analytics metric in v1/v2 scope; this document does not add new metrics, only changes how the existing one is kept up to date.
@@ -28,7 +28,7 @@ At v2 scale that stops being a rounding error:
 | 5-year projected average | 100,000,000 / 86,400 ≈ **~1,157/sec sustained** |
 | 5-year projected peak (5–10x) | **~5,800–11,600/sec** |
 
-Reused directly from `05-kafka-comaporison.md` §2.2–2.3 and `25-elasticsearch-bulk-indexing.md` §5, so the numbers stay consistent across every v2 document that reasons about fetch volume.
+Reused directly from `05-kafka-comparison.md` §2.2–2.3 and `25-elasticsearch-bulk-indexing.md` §5, so the numbers stay consistent across every v2 document that reasons about fetch volume.
 
 Every one of those ~1,157 fetches/sec, on the naive design, drives a durable-storage write:
 
@@ -233,7 +233,7 @@ Redis counters live in memory. If the stats Redis instance crashes or restarts b
 
 ## 5. How This Composes With the Existing Event Pipeline — Complementary, Not Redundant
 
-It is important that this design not be read as contradicting or replacing `05-kafka-comaporison.md`/`25-elasticsearch-bulk-indexing.md`. The two mechanisms serve genuinely different purposes and both remain in place, side by side, triggered from the same fetch:
+It is important that this design not be read as contradicting or replacing `05-kafka-comparison.md`/`25-elasticsearch-bulk-indexing.md`. The two mechanisms serve genuinely different purposes and both remain in place, side by side, triggered from the same fetch:
 
 | | This document — Redis staging counter | Existing pipeline — broker → Elasticsearch |
 |---|---|---|
@@ -250,7 +250,7 @@ Successful resolve (fn-fetch.md)
         ├──► IAccessEventRecorder.Enqueue(...)         (fn-analytics.md §4, unchanged)
         │        │
         │        ▼
-        │    Broker (05-kafka-comaporison.md) → analytics-indexing consumer
+        │    Broker (05-kafka-comparison.md) → analytics-indexing consumer
         │        │
         │        ▼
         │    Elasticsearch bulk index (25-elasticsearch-bulk-indexing.md)  ← detailed record, system of record
@@ -280,7 +280,7 @@ If the Redis counter were ever lost entirely (Section 4's worst case), AF-09's t
 | 6 | Grace period | Flush `bucket - 1`, not the just-closed bucket, with a 5-minute key `EXPIRE` as an orphan backstop | Absorbs ordinary clock skew across API instances |
 | 7 | Durable write shape | One batched `UPDATE`/bulk operation per flush cycle across all touched short codes, not one per click | ~1,150x–12,000x reduction in write round trips (Section 3.4) |
 | 8 | Durability trade-off | Accepted — analytics is explicitly non-critical per `fn-analytics.md` §1.1; AOF persistence recommended as partial mitigation, not a full guarantee | `fn-analytics.md` §1.1, §4 |
-| 9 | Relationship to broker/Elasticsearch pipeline | Complementary — this counter serves only the fast aggregate number; the existing pipeline remains the system of record for the detailed per-click event log | `05-kafka-comaporison.md`, `25-elasticsearch-bulk-indexing.md` |
+| 9 | Relationship to broker/Elasticsearch pipeline | Complementary — this counter serves only the fast aggregate number; the existing pipeline remains the system of record for the detailed per-click event log | `05-kafka-comparison.md`, `25-elasticsearch-bulk-indexing.md` |
 
 ---
 

@@ -1,6 +1,6 @@
 # Out of Scope — v1 Requirement Decisions
 
-**Source:** `01-requirements/v1-requirements/agents/review@agent/review/02-answer.md` (confirmed product-owner answers to the gap-analysis report).
+**Source:** `01-requirements/v1-requirements/agents/review-agent/review/02-answer.md` (confirmed product-owner answers to the gap-analysis report).
 **Purpose:** Quick-reference summary of what has been explicitly decided as **out of scope for v1**. Each item cites the question number it was decided in (Q#) and, where applicable, the requirement ID(s) it constrains.
 
 ## A. Users & Ownership

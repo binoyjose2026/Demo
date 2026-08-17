@@ -118,6 +118,9 @@ Verified via actual `dotnet add reference` calls:
 | `UrlShortner.Infrastructure` | `Microsoft.EntityFrameworkCore`, `Microsoft.EntityFrameworkCore.Sqlite` |
 | `UrlShortner.Application.Tests` | `xunit`, `Moq`, `Microsoft.NET.Test.Sdk` |
 | `UrlShortner.IntegrationTests` | `Microsoft.AspNetCore.Mvc.Testing`, `Microsoft.EntityFrameworkCore.Sqlite` (for the in-memory test connection), `xunit` |
+| `UrlShortner.LoadTests` (§6.7, new) | `NBomber` |
+
+**Post-hardening additions to `UrlShortner.Api` (§6):** `Swashbuckle.AspNetCore` (pinned to 6.9.0 — the 7.x+/10.x lines relocate `OpenApiInfo` to a `Microsoft.OpenApi` namespace shape that isn't worth chasing for this MVP), `Asp.Versioning.Mvc` + `.Mvc.ApiExplorer` (8.1.0 — the current `10.x` line targets `net10.0` only), `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`, `OpenTelemetry.Extensions.Hosting`, `.Instrumentation.AspNetCore`, `.Instrumentation.EntityFrameworkCore` (prerelease — this package has not shipped a stable release compatible with current EF Core versions), `.Exporter.Console`. **Post-hardening addition to `UrlShortner.Application`:** `Microsoft.Extensions.Options.DataAnnotations` (for `ValidateDataAnnotations()`, §6.6).
 
 ## 4. Composition root (`Program.cs`)
 
@@ -128,6 +131,85 @@ Verified via actual `dotnet add reference` calls:
 - `context.Database.Migrate()` runs on startup (skipped under the `IntegrationTest` environment, where `UrlShortnerWebApplicationFactory` migrates its own private in-memory connection instead).
 - `public partial class Program { }` is appended so `WebApplicationFactory<Program>` in the separate `IntegrationTests` project can reference the top-level-statement-generated `Program` class.
 
-## 5. What was deliberately not scaffolded (see `documentation/02-design/v3.MVP/agents/mvp-design@agent.md`)
+## 5. What was deliberately not scaffolded (see `documentation/02-design/v3.MVP/agents/agent-prompt.md`)
 
-No `UrlShortner.Domain.Tests` project (nfr-unit-testing.md §2 lists it, but `UrlShortner.Domain` still has no *behavioral* logic to unit-test in isolation — the `ShortUrl` entity is a plain data holder, `UrlValidationConstants` is a literal, and the `Exceptions` types (§1a) are simple data-carrying classes with no branching logic of their own; every one of them is already exercised indirectly through `ShortUrlServiceTests`/`ShortUrlResolverServiceTests`. Trivial to add a dedicated project once an actual domain-level *method* with branching logic exists to test). No analytics, auth, or rate-limiting projects/modules — see the per-feature "deliberately deferred" comments in `ShortUrlService.cs`, `Program.cs`, and `api-design.md`.
+No `UrlShortner.Domain.Tests` project (nfr-unit-testing.md §2 lists it, but `UrlShortner.Domain` still has no *behavioral* logic to unit-test in isolation — the `ShortUrl` entity is a plain data holder, `UrlValidationConstants` is a literal, and the `Exceptions` types (§1a) are simple data-carrying classes with no branching logic of their own; every one of them is already exercised indirectly through `ShortUrlServiceTests`/`ShortUrlResolverServiceTests`. Trivial to add a dedicated project once an actual domain-level *method* with branching logic exists to test). No analytics module — see `fn-analytics.md` and the per-feature "deliberately deferred" comments in `ShortUrlService.cs`/`ShortUrlResolverService.cs`. Auth and rate-limiting are no longer un-wired placeholders — see §6.
+
+## 6. Post-MVP hardening additions
+
+A batch of production-hardening items layered onto the MVP structure above without changing the core create/fetch project boundaries. Full behavioral description: `api-design.md` §6.
+
+### 6.1 New files in `UrlShortner.Api`
+
+```
+UrlShortner.Api/
+├── Authentication/
+│   └── MvpPlaceholderAuthenticationHandler.cs   <- always-succeeds placeholder auth scheme (item 3)
+├── Filters/
+│   └── IdempotencyKeyFilter.cs                  <- reads Idempotency-Key, does not dedupe (item 5)
+├── Middleware/
+│   ├── CorrelationIdMiddleware.cs               <- X-Correlation-Id in/out + Serilog LogContext (item 6)
+│   └── SecurityResponseHeadersMiddleware.cs     <- X-Content-Type-Options, Referrer-Policy (item 10)
+├── Dockerfile                                   <- multi-stage SDK/runtime build (item 13)
+└── (Program.cs, Controllers/, Middleware/GlobalExceptionHandler.cs -- extended, not replaced)
+```
+
+`GlobalExceptionHandler` and the two new middleware classes are declared `internal` (not `public`) — they are Api-layer plumbing, not part of the public API surface `GenerateDocumentationFile`/CS1591 cares about (see `UrlShortner.Api.csproj`'s own comment).
+
+### 6.2 New files in `UrlShortner.Domain`
+
+```
+UrlShortner.Domain/ShortUrls/
+├── IShortUrlEventPublisher.cs        <- NullKafka seam, mirrors IShortUrlCache (item 4)
+└── ShortCodeValidationConstants.cs   <- shared base62 alphabet + IsValidFormat() (item 16)
+```
+
+### 6.3 New files in `UrlShortner.Infrastructure`
+
+```
+UrlShortner.Infrastructure/Messaging/
+└── NullShortUrlEventPublisher.cs     <- the literal NULL Kafka placeholder (item 4), mirrors
+                                          Caching/NullShortUrlCache.cs exactly
+```
+
+### 6.4 New files in `UrlShortner.IntegrationTests`
+
+```
+UrlShortner.IntegrationTests/Persistence/
+└── ShortUrlConcurrencyTests.cs       <- RowVersion optimistic-concurrency proof (item 17),
+                                          against AppDbContext directly (no update endpoint exists)
+```
+
+### 6.5 New solution-root files
+
+```
+src/
+├── .editorconfig      <- item 12: formatting/naming rules matching coding-giudelines.md
+├── requests.http       <- item 14: example create/fetch requests, valid and invalid
+└── README.md           <- item 15: how to run locally, test, load-test, and containerize
+```
+
+### 6.6 `UrlShortner.Application` change
+
+`ApplicationServiceCollectionExtensions.AddApplicationServices` now binds `ShortUrlOptions` via `AddOptions<T>().Bind(...).ValidateDataAnnotations().ValidateOnStart()` instead of the older `services.Configure<T>(...)` — see item 7 / `api-design.md` §6.11. `ShortUrlOptions.BaseUrl` gained `[Required]`/`[Url]` attributes.
+
+### 6.7 New project: `UrlShortner.LoadTests`
+
+```
+UrlShortner.LoadTests/
+├── UrlShortner.LoadTests.csproj   <- console app (OutputType=Exe), NBomber package only,
+│                                      no ProjectReference to any other project in the
+│                                      solution -- it drives the app over plain HTTP,
+│                                      the same way an external load-test client would
+└── Program.cs                     <- two scenarios: create_short_url (POST), fetch_redirect (GET)
+```
+
+Added to `UrlShortner.sln` via `dotnet sln add`. Deliberately **not** an xUnit project (no `Microsoft.NET.Test.Sdk`/`xunit` package references, no `<IsPackable>false</IsPackable>` test-project shape) so `dotnet test` on the solution skips it automatically — there is nothing for VSTest to discover. Build-only for this task: not run/executed, not wired into CI. See the project's own `Program.cs` header comment and `api-design.md` §6.12 for why measuring against the v2 design's extreme-scale numbers would require the actual v2 infrastructure (Redis, distributed rate limiting, database partitioning/sharding, horizontally-scaled instances) to be a meaningful comparison — this is a single-instance/SQLite MVP, so this harness is a smoke/harness check, not a scalability benchmark.
+
+### 6.8 DI-lifetime audit (item 8)
+
+Reviewed every registration in `ApplicationServiceCollectionExtensions`/`InfrastructureServiceCollectionExtensions`; all were already correct (no `AppDbContext`/repository/`IUnitOfWork` registered as anything other than Scoped). Added a one-line comment at each registration confirming the intentional lifetime choice, including the two new item-4 registrations (`IShortUrlEventPublisher` → Singleton, same reasoning as `IShortUrlCache`).
+
+### 6.9 CancellationToken propagation audit (item 9)
+
+Reviewed every async method in `UrlShortner.Application` and `UrlShortner.Infrastructure`; all already accepted and threaded a `CancellationToken` through to every downstream async call. No gaps found — the one method that intentionally does *not* take one (`ShortUrlService.PublishUrlCreatedEventSafelyAsync`) is documented inline as deliberate: it's a fire-and-forget side effect that must outlive the (already-cancelled-by-then) request token.

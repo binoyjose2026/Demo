@@ -3,8 +3,8 @@
 **Version:** v2 (scalability exploration)
 **Status:** Draft — architectural consideration, not yet a committed decision
 **Scope:** This document covers **only** the high-volume click/analytics event store (the v2 successor to `ShortUrlAccessEvent`, see `fn-analytics.md`). It does **not** cover the core `ShortUrl` mapping table (code → target URL), which remains a relational, ACID system of record per `data-design-guidelines.md` regardless of the outcome of this comparison. See Section 6 for the explicit split decision.
-**Traceability:** `prompt@review-desig.md` (review scope: "Explain why Elastic Search is a better solution for this due to extreme size"); `fn-analytics.md` (v1 analytics scope — click count only, no PII, `ShortUrlAccessEvent` design, Section 6 open retention item); `data-design-guidelines.md` (relational conventions the core mapping table keeps).
-**Companion docs:** `05-kafka-comaporison.md` (how events get from the redirect path to the store — this document assumes events arrive and asks what stores them), an outbox-pattern consideration (if written), a Redis-caching consideration (if written).
+**Traceability:** `agent-prompt.md` (review scope: "Explain why Elastic Search is a better solution for this due to extreme size"); `fn-analytics.md` (v1 analytics scope — click count only, no PII, `ShortUrlAccessEvent` design, Section 6 open retention item); `data-design-guidelines.md` (relational conventions the core mapping table keeps).
+**Companion docs:** `05-kafka-comparison.md` (how events get from the redirect path to the store — this document assumes events arrive and asks what stores them), an outbox-pattern consideration (if written), a Redis-caching consideration (if written).
 
 ---
 
@@ -111,4 +111,4 @@ This is an explicit **polyglot persistence** decision, not a wholesale "switch t
 
 **What this decision does not do:** it does not migrate the core mapping table to Elasticsearch, does not make Elasticsearch a system of record for anything, and does not imply Elasticsearch replaces SQL Server project-wide. It scopes Elasticsearch narrowly to the one dataset whose shape actually calls for it.
 
-**Open follow-ups this document deliberately leaves for other considerations:** how events get from the redirect path into Elasticsearch without blocking the redirect (`05-kafka-comaporison.md`, and an outbox-pattern consideration if the review calls for one), and how event ingestion should be buffered/batched under peak load — this document is scoped to the storage engine choice, not the ingestion pipeline.
+**Open follow-ups this document deliberately leaves for other considerations:** how events get from the redirect path into Elasticsearch without blocking the redirect (`05-kafka-comparison.md`, and an outbox-pattern consideration if the review calls for one), and how event ingestion should be buffered/batched under peak load — this document is scoped to the storage engine choice, not the ingestion pipeline.

@@ -1,0 +1,89 @@
+@baseUrl = http://localhost:5236
+
+### ---------------------------------------------------------------------------------
+### Item 14: example requests runnable directly in VS Code's "REST Client" extension
+### or Rider's built-in HTTP client. Run the Api project first (`dotnet run --project
+### UrlShortener.Api`), then send requests with "Send Request" above each block.
+### ---------------------------------------------------------------------------------
+
+### Health -- liveness (process is up; no dependency checks)
+GET {{baseUrl}}/health/live
+
+### Health -- readiness (DB-aware, via AddDbContextCheck<AppDbContext>)
+GET {{baseUrl}}/health/ready
+
+### Swagger UI (Development only) -- open in a browser, not sendable as a request:
+### {{baseUrl}}/swagger
+
+### ---------------------------------------------------------------------------------
+### Create -- valid request (201 Created)
+### ---------------------------------------------------------------------------------
+POST {{baseUrl}}/api/v1/short-urls
+Content-Type: application/json
+Idempotency-Key: 5f8c1e2a-9b3d-4e7f-9a1c-2d6b7e4f0a11
+
+{
+  "originalUrl": "https://www.anthropic.com/some/very/long/path?query=1"
+}
+
+### ---------------------------------------------------------------------------------
+### Create -- missing URL (400 ValidationProblemDetails)
+### ---------------------------------------------------------------------------------
+POST {{baseUrl}}/api/v1/short-urls
+Content-Type: application/json
+
+{
+  "originalUrl": ""
+}
+
+### ---------------------------------------------------------------------------------
+### Create -- malformed URL (400 ValidationProblemDetails)
+### ---------------------------------------------------------------------------------
+POST {{baseUrl}}/api/v1/short-urls
+Content-Type: application/json
+
+{
+  "originalUrl": "not-a-url"
+}
+
+### ---------------------------------------------------------------------------------
+### Create -- disallowed scheme, e.g. javascript: (400 ValidationProblemDetails)
+### See nfr-security.md §3.1 -- the classic stored-XSS-gadget vector, rejected by the
+### scheme allowlist.
+### ---------------------------------------------------------------------------------
+POST {{baseUrl}}/api/v1/short-urls
+Content-Type: application/json
+
+{
+  "originalUrl": "javascript:alert(1)"
+}
+
+### ---------------------------------------------------------------------------------
+### Fetch/redirect -- replace {code} with a code returned by a Create call above
+### (302 Found, Location header holds the original URL; browsers follow it
+### automatically, most HTTP clients show the 302 + Location header instead).
+### ---------------------------------------------------------------------------------
+GET {{baseUrl}}/{code}
+
+### ---------------------------------------------------------------------------------
+### Fetch/redirect -- unknown but well-formed code (404 Not Found)
+### ---------------------------------------------------------------------------------
+GET {{baseUrl}}/zzzzzzz
+
+### ---------------------------------------------------------------------------------
+### Fetch/redirect -- malformed code, characters outside the base62 alphabet
+### (item 16: 400 Bad Request, rejected before any repository/DB lookup)
+### ---------------------------------------------------------------------------------
+GET {{baseUrl}}/not-a-real-code!
+
+### ---------------------------------------------------------------------------------
+### Correlation ID -- send your own X-Correlation-Id and see it echoed back as a
+### response header and included as "traceId" in any ProblemDetails error body.
+### ---------------------------------------------------------------------------------
+POST {{baseUrl}}/api/v1/short-urls
+Content-Type: application/json
+X-Correlation-Id: demo-correlation-id-123
+
+{
+  "originalUrl": "not-a-url"
+}

@@ -2,12 +2,12 @@
 
 **Version:** v2 (scalability exploration)
 **Status:** Draft — architectural consideration, not yet a committed decision
-**Scope:** This document answers one narrow question — *given that click/analytics events already have a store (`03-elasticsearch-vs-sql-server.md`) and a delivery mechanism (`05-kafka-comaporison.md`), how should the consumer that reads those events actually write them into Elasticsearch?* It does not re-argue the store choice or the broker choice — both are assumed settled — and it does not redesign the resilience patterns already defined for the Elasticsearch call path.
-**Traceability:** `prompt@review-desig.md` (review scope item: "Batching: can you add batching logic for url fetches. Multi inserts into Elastic Search").
+**Scope:** This document answers one narrow question — *given that click/analytics events already have a store (`03-elasticsearch-vs-sql-server.md`) and a delivery mechanism (`05-kafka-comparison.md`), how should the consumer that reads those events actually write them into Elasticsearch?* It does not re-argue the store choice or the broker choice — both are assumed settled — and it does not redesign the resilience patterns already defined for the Elasticsearch call path.
+**Traceability:** `agent-prompt.md` (review scope item: "Batching: can you add batching logic for url fetches. Multi inserts into Elastic Search").
 
 **Companion documents (not duplicated here, cross-referenced by filename):**
 - `03-elasticsearch-vs-sql-server.md` — establishes Elasticsearch as the analytics/click-event store at up to ~100M events/day (~1,160/sec sustained average per that document's own math), append-only, aggregation-heavy, consistency-relaxed. This document assumes that decision and asks only how documents get written in.
-- `05-kafka-comaporison.md` — establishes the broker (Azure Service Bus Topics by default, Kafka as a named upgrade path) that `UrlClicked` events flow through before reaching the analytics-indexing consumer, and gives the event-rate math (~1,215 events/sec average, ~6,100–12,150/sec peak at 5-year scale) this document's throughput section reuses directly.
+- `05-kafka-comparison.md` — establishes the broker (Azure Service Bus Topics by default, Kafka as a named upgrade path) that `UrlClicked` events flow through before reaching the analytics-indexing consumer, and gives the event-rate math (~1,215 events/sec average, ~6,100–12,150/sec peak at 5-year scale) this document's throughput section reuses directly.
 - `21-background-job-hosting.md` — establishes that the analytics-indexing broker consumer is hosted as a long-running, containerized `BackgroundService` (Worker Service), not Azure Functions, specifically because it is a continuous, stateful stream consumer. The batching/flush logic described here lives inside that worker's consume loop.
 - `18-circuit-breaker.md` — the circuit breaker already defined for outbound Elasticsearch calls. This document's bulk-flush call is one more thing that goes through that breaker; the breaker's states, trip conditions, and fallback design are not repeated or redesigned here.
 - `19-bulkhead.md` — the concurrency bulkhead already sized for the Elasticsearch indexing dependency (20 concurrent calls, Section 2 of that document). The bulk-flush call is what actually occupies those 20 slots; this document does not resize that ceiling.
@@ -21,7 +21,7 @@ The naive implementation of "the consumer reads an event, indexes it" is one HTT
 - **Per-request overhead is paid once per document instead of once per batch.** Every single-document index call is a full HTTP request/response round-trip: TCP/TLS (or connection-pool checkout), HTTP header parsing, JSON body parsing, routing to the correct shard, a translog write, and a response serialized back to the caller. None of that overhead is shared across documents when each document gets its own call — it is paid in full, every time, for every event.
 - **Refresh/translog behavior amplifies the cost.** Elasticsearch's near-real-time visibility model (the ~1s default refresh interval already noted in `03-elasticsearch-vs-sql-server.md` Section 5) and its translog durability model are both tuned around the assumption that documents arrive in batches. Indexing one document at a time doesn't make any individual document "more durable" or "more visible sooner" in a way that matters for an analytics event — `fn-analytics.md`'s already-accepted tolerance for a few seconds of staleness (Section 4, referenced in `03-elasticsearch-vs-sql-server.md`) means there is no latency benefit being purchased by single-doc indexing, only overhead.
 - **Connection overhead compounds under concurrency.** At sustained volume, single-doc indexing means the consumer either opens a very large number of concurrent HTTP connections to Elasticsearch (fighting the very connection ceiling `19-bulkhead.md` Section 2 deliberately caps at 20 for this dependency) or serializes requests one-at-a-time and falls behind the arrival rate. Neither is workable.
-- **The unrealistic-call-volume argument, stated directly:** at ~1,150 events/sec sustained (per `03-elasticsearch-vs-sql-server.md`/`05-kafka-comaporison.md`), single-document indexing means **~1,150 individual HTTP calls/sec to Elasticsearch from this one workload alone**, climbing to **~6,000–12,000 calls/sec at the stated 5-year peak** (`05-kafka-comaporison.md` Section 2.3). That is not a small number of extra requests — it is asking a 20-slot concurrency bulkhead (`19-bulkhead.md`) to somehow sustain over a thousand sequential round-trips per second, which is arithmetically impossible without either massively widening the bulkhead (defeating its purpose as a shared-resource protector) or falling permanently behind the broker's arrival rate (an ever-growing consumer lag).
+- **The unrealistic-call-volume argument, stated directly:** at ~1,150 events/sec sustained (per `03-elasticsearch-vs-sql-server.md`/`05-kafka-comparison.md`), single-document indexing means **~1,150 individual HTTP calls/sec to Elasticsearch from this one workload alone**, climbing to **~6,000–12,000 calls/sec at the stated 5-year peak** (`05-kafka-comparison.md` Section 2.3). That is not a small number of extra requests — it is asking a 20-slot concurrency bulkhead (`19-bulkhead.md`) to somehow sustain over a thousand sequential round-trips per second, which is arithmetically impossible without either massively widening the bulkhead (defeating its purpose as a shared-resource protector) or falling permanently behind the broker's arrival rate (an ever-growing consumer lag).
 - **It badly underutilizes the cluster's real indexing throughput capacity.** Elasticsearch's actual indexing throughput ceiling — the number Section 4 of `03-elasticsearch-vs-sql-server.md` cites as Elasticsearch's core strength ("native strength — built for continuous document ingest") — is realized through bulk ingestion, not single-document calls. A cluster sized for high-throughput bulk indexing, fed one document per HTTP request, spends most of its and the caller's time on per-request bookkeeping rather than on the actual Lucene segment writes it is good at. The gap between "what this cluster could index" and "what single-doc indexing lets it index" widens as volume grows — which is exactly the direction this system is headed (Section 5 below quantifies this).
 
 **In one sentence:** single-document indexing turns a workload Elasticsearch is architecturally built to absorb efficiently (Section 4 of `03-elasticsearch-vs-sql-server.md`) into a workload dominated by request overhead instead of actual indexing work, at a call volume that doesn't fit through the concurrency budget already allocated to this dependency.
@@ -34,12 +34,12 @@ Elasticsearch's `_bulk` endpoint accepts a single HTTP request containing many i
 
 For this system, the shape is:
 
-- **The consumer is the analytics-indexing Worker Service** described in `21-background-job-hosting.md` Section 1 — a long-running, containerized `BackgroundService` holding a persistent subscription/consumer-group connection to the broker (`05-kafka-comaporison.md`), continuously reading `UrlClicked` events.
+- **The consumer is the analytics-indexing Worker Service** described in `21-background-job-hosting.md` Section 1 — a long-running, containerized `BackgroundService` holding a persistent subscription/consumer-group connection to the broker (`05-kafka-comparison.md`), continuously reading `UrlClicked` events.
 - **Instead of indexing each event as it's read, the consumer accumulates events in an in-memory buffer** as it pulls them off the broker.
 - **The buffer is flushed to Elasticsearch's `_bulk` endpoint as one multi-document request** once a flush trigger fires (Section 3), rather than one `_bulk` call per document (which would just relocate the Section 1 problem into a differently-shaped API call) or one single-doc call per event.
 - **The broker offset/checkpoint is only committed after a successful (or successfully handled — see Section 4) bulk flush**, consistent with `21-background-job-hosting.md` Section 5's point that offset/checkpoint management is a natural property of a long-running consumer that pulls, buffers, and commits progress as it goes — not something a per-invocation model does cleanly.
 
-This is purely a change in *how many events are sent per Elasticsearch call*, not a change to the store (`03-elasticsearch-vs-sql-server.md`), the broker (`05-kafka-comaporison.md`), or the hosting model (`21-background-job-hosting.md`) — all three of those decisions are inputs to this document, not outputs of it.
+This is purely a change in *how many events are sent per Elasticsearch call*, not a change to the store (`03-elasticsearch-vs-sql-server.md`), the broker (`05-kafka-comparison.md`), or the hosting model (`21-background-job-hosting.md`) — all three of those decisions are inputs to this document, not outputs of it.
 
 ---
 
@@ -56,7 +56,7 @@ A size-only trigger (e.g., "flush every 1,000 documents, however long that takes
 
 ### Why time-only fails
 
-A time-only trigger (e.g., "flush every 1 second, however many documents that is") risks **inefficiently small batches during traffic spikes**. At the stated peak (~6,000–12,000 events/sec, `05-kafka-comaporison.md` Section 2.3), a 1-second-only trigger would still flush every second, but by then the buffer could hold 6,000–12,000 documents — an oversized single bulk request that risks hitting Elasticsearch's `http.max_content_length` limit, causing a large, all-or-nothing request that's slower to process and riskier to retry as a unit than several well-sized batches would be. Conversely, at genuinely low traffic, a time-only trigger flushes on schedule regardless of how few documents accumulated — which is fine for latency but means many bulk calls carry only a handful of documents, forfeiting most of the batching benefit for that stretch (not a correctness problem, just an efficiency one, and one the size trigger's OR-condition doesn't cost anything to also guard against).
+A time-only trigger (e.g., "flush every 1 second, however many documents that is") risks **inefficiently small batches during traffic spikes**. At the stated peak (~6,000–12,000 events/sec, `05-kafka-comparison.md` Section 2.3), a 1-second-only trigger would still flush every second, but by then the buffer could hold 6,000–12,000 documents — an oversized single bulk request that risks hitting Elasticsearch's `http.max_content_length` limit, causing a large, all-or-nothing request that's slower to process and riskier to retry as a unit than several well-sized batches would be. Conversely, at genuinely low traffic, a time-only trigger flushes on schedule regardless of how few documents accumulated — which is fine for latency but means many bulk calls carry only a handful of documents, forfeiting most of the batching benefit for that stretch (not a correctness problem, just an efficiency one, and one the size trigger's OR-condition doesn't cost anything to also guard against).
 
 ### Why size AND time (OR-triggered) bounds both problems
 
@@ -77,7 +77,7 @@ Combining both triggers means:
 If the consumer accumulates events from the broker faster than it can flush them to Elasticsearch (e.g., during an Elasticsearch slowdown, or a burst well above the peak this system is sized for), the in-memory buffer must be **bounded**, not allowed to grow without limit:
 
 - The buffer has a hard capacity ceiling (sized as a small multiple of the flush batch size — e.g., 5,000–10,000 events, a few flush-cycles' worth of headroom, not an arbitrary large number).
-- **Once the buffer is at capacity, the consumer stops pulling new messages off the broker** rather than continuing to read and letting the buffer (and process memory) grow past its bound. This is backpressure applied at the correct layer: the broker is the durable, already-designed-for-this buffer (Service Bus/Kafka retains unconsumed messages per `05-kafka-comaporison.md`), so pausing consumption is safe — messages wait on the broker, not in this process's memory, and nothing is lost.
+- **Once the buffer is at capacity, the consumer stops pulling new messages off the broker** rather than continuing to read and letting the buffer (and process memory) grow past its bound. This is backpressure applied at the correct layer: the broker is the durable, already-designed-for-this buffer (Service Bus/Kafka retains unconsumed messages per `05-kafka-comparison.md`), so pausing consumption is safe — messages wait on the broker, not in this process's memory, and nothing is lost.
 - This composes directly with `19-bulkhead.md`'s existing 20-concurrency ceiling on the Elasticsearch indexing dependency (Section 2 of that document): if flush calls themselves start queuing or being rejected because the bulkhead is saturated (e.g., Elasticsearch is slow and flushes are taking longer than the 1-second cadence), the buffer fills, backpressure engages, and the consumer's broker-read rate drops to match what Elasticsearch can actually absorb — exactly the graceful-degradation behavior `19-bulkhead.md` Section 5 describes generally, applied here to this specific consumer.
 - **What this deliberately does not do:** grow the buffer unboundedly "just in case," or spawn unbounded concurrent flush calls to drain the buffer faster — both would reintroduce the unbounded-resource-growth failure mode `19-bulkhead.md` Section 1 already identifies as the core problem bulkheads exist to prevent, just relocated into this worker's own memory/concurrency instead of the shared Elasticsearch client pool.
 
@@ -104,13 +104,13 @@ The bulk-flush call is, from the resilience pipeline's point of view, just one m
 
 ## 5. Throughput Math
 
-Using `05-kafka-comaporison.md`'s own event-rate figures (Section 2.2–2.3 of that document) and the 1,000-document / 1-second flush trigger from Section 3:
+Using `05-kafka-comparison.md`'s own event-rate figures (Section 2.2–2.3 of that document) and the 1,000-document / 1-second flush trigger from Section 3:
 
 ### 5.1 Single-document indexing baseline (what this replaces)
 
 | Load | Events/sec | Individual index calls/sec required |
 |---|---|---|
-| 5-year sustained average | ~1,215/sec (1,157/sec fetches alone, per `05-kafka-comaporison.md` Section 2.2) | **~1,150–1,215 calls/sec** |
+| 5-year sustained average | ~1,215/sec (1,157/sec fetches alone, per `05-kafka-comparison.md` Section 2.2) | **~1,150–1,215 calls/sec** |
 | 5-year peak (5–10x burst) | ~6,100–12,150/sec | **~6,100–12,150 calls/sec** |
 
 ### 5.2 With 1,000-document bulk batching, size-or-time trigger
@@ -156,7 +156,7 @@ public sealed class AnalyticsIndexingWorker : BackgroundService
     private const int FlushSize = 1_000;
     private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(1);
 
-    private readonly IBrokerConsumer<UrlClickedEvent> _consumer; // per 05-kafka-comaporison.md
+    private readonly IBrokerConsumer<UrlClickedEvent> _consumer; // per 05-kafka-comparison.md
     private readonly ElasticsearchClient _esClient;               // Elastic.Clients.Elasticsearch
     private readonly IDeadLetterWriter _deadLetter;
 
@@ -230,7 +230,7 @@ This is illustrative, not production-ready code — the real implementation need
 | Concern | Decision |
 |---|---|
 | Why single-doc indexing doesn't scale | At ~1,150–12,150 events/sec, single-doc indexing requires an equal number of individual HTTP calls/sec, exceeding the 20-concurrency Elasticsearch bulkhead (`19-bulkhead.md`) and paying per-request overhead (HTTP, translog, refresh) on every event instead of amortizing it. |
-| Mechanism | The analytics-indexing Worker Service (`21-background-job-hosting.md`) accumulates events read off the broker (`05-kafka-comaporison.md`) in memory and flushes them via `Elastic.Clients.Elasticsearch`'s `_bulk` support as one multi-document request per flush. |
+| Mechanism | The analytics-indexing Worker Service (`21-background-job-hosting.md`) accumulates events read off the broker (`05-kafka-comparison.md`) in memory and flushes them via `Elastic.Clients.Elasticsearch`'s `_bulk` support as one multi-document request per flush. |
 | Flush trigger | **1,000 documents OR 1 second, whichever comes first** — size trigger governs at/above ~1,150 events/sec (the common case at 5-year scale); time trigger bounds worst-case latency during low-traffic periods. |
 | Backpressure | In-memory buffer capped (a small multiple of flush size); once full, the consumer stops pulling from the broker — the broker (not process memory) absorbs the backlog, composing with the existing Elasticsearch bulkhead ceiling. |
 | Partial bulk failure | Per-item response inspection; retryable failures re-queued (bounded), non-retryable failures dead-lettered; broker offset commits only for items Elasticsearch actually accepted (or definitively dead-lettered) — never the whole batch retried for one bad document. |

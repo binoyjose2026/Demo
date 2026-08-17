@@ -1,6 +1,6 @@
 # Idempotency-Key Support for Create Short URL
 
-**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/prompt@review-desig.md`.
+**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/agent-prompt.md`.
 **Builds on (does not replace):** `v1/design/fn-create.md` (the create-link flow this document adds idempotency to — validation pipeline, short-code generation, persistence sequence, DTOs). This document does not restate any of that flow; it adds one new guard clause in front of it.
 **Related v2 documents (by filename, not duplicated here):** `01-create-path-extreme-scalability.md` (the multi-instance write path and the 1M-5M creates/day target this document assumes), `09-resilience-patterns.md` (client-side retry-with-backoff-and-jitter — the pattern that makes duplicate requests routine at this scale; not restated here, only its consequence is), `07-redis-caching-and-invalidation.md` (the existing Redis tier this document's storage recommendation reuses — key-naming and TTL-as-backstop conventions carried forward, not re-derived).
 **Cross-references `UrlShortner/global/guidelines/data-design-guidelines.md`** for the `Id`/`RowVersion`/audit-field conventions and explains where the idempotency record does and does not follow them (Section 3).

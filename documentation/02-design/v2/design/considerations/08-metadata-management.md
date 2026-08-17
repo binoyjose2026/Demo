@@ -1,7 +1,7 @@
 # v2 Design Consideration — Metadata Management at Scale
 
 **Status:** v2 scalability exploration (not yet adopted into the shipped v1 design).
-**Traceability:** `prompt@review-desig.md` (review scope item: *"explain how the metadata of the files can be managed. This can be a separate document"*).
+**Traceability:** `agent-prompt.md` (review scope item: *"explain how the metadata of the files can be managed. This can be a separate document"*).
 **Companion documents:** `03-elasticsearch-vs-sql-server.md` (the relational/ES split this document applies, not re-litigates), `06-output-caching-bff-cdn.md` (CDN delivery — one-sentence cross-reference only, see Section 3), `07-redis-caching-and-invalidation.md` (hot-path caching of the mapping itself), `../../v1/design/fn-create.md` (v1 `ShortUrl` entity shape), `requirement.app.functional.md` (AF-05 metadata retrieval, AF-23 area — QR-code stretch), `01-summary.md` (QR code confirmed optional/stretch, not committed v1), `UrlShortner/global/guidelines/data-design-guidelines.md` (soft-delete convention this document confirms still holds).
 
 ---

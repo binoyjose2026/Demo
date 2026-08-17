@@ -1,8 +1,8 @@
 # Distributed Rate Limiting for a Horizontally-Scaled API
 
-**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/prompt@review-desig.md`.
+**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/agent-prompt.md`.
 **Builds on (does not replace):** `v1/design/nfr-security.md` Section 5 (rate limiting policy shape: per-caller limit + creation-volume ceiling, anonymous < authenticated, explicit rejection over silent throttling, numeric thresholds left as placeholders) and Section 10 (creation requires an authenticated user context).
-**Traces to:** ANFR-09 (`requirement.app.non-functional.md`, "the URL-creation endpoint shall be protected against abusive/excessive request volume"); Q13, Q16 (`01-requirements/v1-requirements/agents/review@agent/review/02-answer.md` and cross-referenced in `nfr-security.md` Section 5).
+**Traces to:** ANFR-09 (`requirement.app.non-functional.md`, "the URL-creation endpoint shall be protected against abusive/excessive request volume"); Q13, Q16 (`01-requirements/v1-requirements/agents/review-agent/review/02-answer.md` and cross-referenced in `nfr-security.md` Section 5).
 **Related v2 documents (by filename, not duplicated here):** `07-redis-caching-and-invalidation.md` (the same Redis instance/cluster and `IDistributedCache`/`StackExchange.Redis` seam this document reuses for a different purpose), `01-create-path-extreme-scalability.md` (establishes the API runs as many horizontally-scaled instances behind a load balancer — the topology change this document responds to).
 
 ---

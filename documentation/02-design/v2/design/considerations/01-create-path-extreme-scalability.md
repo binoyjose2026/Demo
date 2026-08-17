@@ -123,7 +123,7 @@ Making each downstream step individually fast reduces *latency* but does not red
 Two questions fall out of "publish an event after the create," and each has a dedicated document in this series because the mechanics are non-trivial:
 
 - **How do we guarantee the event is actually published, given that the database write and the event publish are two separate operations that could partially fail (write succeeds, publish fails, or vice versa)?** This is the dual-write problem, and it's the reason this series has a dedicated document — see **20-outbox-pattern.md** — rather than this overview hand-waving "just publish an event."
-- **What's the actual event transport/broker, and is it warranted at this volume versus a simpler alternative?** See **05-kafka-comaporison.md** for whether Kafka specifically is the right fit for this event volume (5M create-events/day at peak, plus whatever downstream consumers multiply that by) versus lighter-weight alternatives.
+- **What's the actual event transport/broker, and is it warranted at this volume versus a simpler alternative?** See **05-kafka-comparison.md** for whether Kafka specifically is the right fit for this event volume (5M create-events/day at peak, plus whatever downstream consumers multiply that by) versus lighter-weight alternatives.
 
 This document takes no position on Outbox-vs-not or Kafka-vs-not — that's deliberately those two documents' job. What this section establishes is only the *shape* of the requirement: the create path's critical section is "validate, generate/reserve code, persist" (Sections 2 and 4); everything else is a downstream, asynchronously-triggered consequence of that persisted fact, not a co-requirement for acknowledging the caller.
 

@@ -1,9 +1,9 @@
 # Redis-Based Distributed Caching for Frequently-Accessed Short Codes
 
-**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/prompt@review-desig.md`.
+**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/agent-prompt.md`.
 **Builds on (does not replace):** `v1/design/nfr-scalability.md` Section 2 (the `IMemoryCache`-backed `CachingShortUrlRepository` Decorator) and `v1/design/fn-fetch.md` Section 6 (the immutability guarantee that makes aggressive caching *safe*).
 **Traces to:** AF-02 (redirect flow), AF-06 (defined not-found/expired response), AF-07 (deactivation), ANFR-02 (a short code shall consistently resolve to the same original URL for the lifetime of the mapping), ANFR-05 (low-latency redirect), ANFR-06 (high-volume read throughput).
-**Related v2 documents (by filename, not duplicated here):** `05-kafka-comaporison.md` (event-transport comparison), the Outbox pattern consideration document, and the create-path horizontal-scalability overview referenced in the review prompt.
+**Related v2 documents (by filename, not duplicated here):** `05-kafka-comparison.md` (event-transport comparison), the Outbox pattern consideration document, and the create-path horizontal-scalability overview referenced in the review prompt.
 
 ---
 
@@ -141,7 +141,7 @@ A link's cached redirect decision can go stale for exactly the events AF-07 and 
 
 ### 5.2 Active invalidation: publish-on-write, subscribe-and-evict
 
-The create/update/delete API path publishes an invalidation event whenever one of the fields in Section 5.1 changes; the event carries just the short code, and a lightweight subscriber service consumes it and evicts (or refreshes) the corresponding Redis key across the whole cluster. The event transport itself (in-process outbox write, Kafka topic, or another broker) is the concern of the Outbox pattern consideration document and `05-kafka-comaporison.md` — this document treats "an invalidation event reaches interested subscribers reliably" as a given capability supplied by those documents, and defines only what happens at the cache boundary:
+The create/update/delete API path publishes an invalidation event whenever one of the fields in Section 5.1 changes; the event carries just the short code, and a lightweight subscriber service consumes it and evicts (or refreshes) the corresponding Redis key across the whole cluster. The event transport itself (in-process outbox write, Kafka topic, or another broker) is the concern of the Outbox pattern consideration document and `05-kafka-comparison.md` — this document treats "an invalidation event reaches interested subscribers reliably" as a given capability supplied by those documents, and defines only what happens at the cache boundary:
 
 ```
 Deactivate/Delete/Update API call

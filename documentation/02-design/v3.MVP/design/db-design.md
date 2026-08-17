@@ -8,7 +8,7 @@
 
 ## 1. Scope
 
-One table: `ShortUrls`. This MVP is scoped to create + fetch only (see `documentation/02-design/v3.MVP/agents/mvp-design@agent.md`), so no `AccessEvents`/analytics table, no `Departments`/ownership table, etc. — those are out of scope for this phase (see `documentation/02-design/v1/design/fn-analytics.md`, `fn-create.md` §4).
+One table: `ShortUrls`. This MVP is scoped to create + fetch only (see `documentation/02-design/v3.MVP/agents/agent-prompt.md`), so no `AccessEvents`/analytics table, no `Departments`/ownership table, etc. — those are out of scope for this phase (see `documentation/02-design/v1/design/fn-analytics.md`, `fn-create.md` §4).
 
 ## 2. Schema — `ShortUrls`
 

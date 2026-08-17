@@ -3,7 +3,7 @@
 **Reviewer:** Document Reviewer AI Agent
 **Date:** 2026-08-17
 **Inputs reviewed:**
-- Instruction prompt: `01-agent-smart-copy/01-prompt.md`
+- Instruction prompt: `01-agent-smart-copy/agents/agent-prompt.md`
 - Source document: `External/from-client/assessment.md`
 - Output 1: `requirement.functional.v1.md`
 - Output 2: `requirement.non-functional.v1.md`

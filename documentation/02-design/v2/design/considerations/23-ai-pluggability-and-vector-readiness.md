@@ -3,10 +3,10 @@
 **Version:** v2 (scalability exploration)
 **Status:** Draft — architectural readiness consideration, **not** a feature commitment
 **Scope:** This document answers one question — *does anything in this architecture block bolting on AI-driven capabilities later, and if not, where would they attach?* It is explicitly **not** a design for any specific AI feature, does not select an embedding model or AI vendor, and does not propose building anything now. See Section 4 for what is deliberately out of scope.
-**Traceability:** `prompt@review-desig.md` ("create a document on how AI can be plugged into the app — making the design flexible for AI to operate. Metadata and URLs can be optionally represented as vectors at a later point in time").
+**Traceability:** `agent-prompt.md` ("create a document on how AI can be plugged into the app — making the design flexible for AI to operate. Metadata and URLs can be optionally represented as vectors at a later point in time").
 **Companion docs (not duplicated here, cross-referenced by filename):**
 - `03-elasticsearch-vs-sql-server.md` — establishes Elasticsearch as the v2 analytics/event store; this document leans on that decision rather than re-litigating it.
-- `05-kafka-comaporison.md` — establishes the event-driven broker pipeline (`UrlCreated`/`UrlClicked` events, independent consumers) that this document treats as the natural AI attachment point.
+- `05-kafka-comparison.md` — establishes the event-driven broker pipeline (`UrlCreated`/`UrlClicked` events, independent consumers) that this document treats as the natural AI attachment point.
 - `08-metadata-management.md` — covers how link/file metadata is modeled and stored today; this document only adds an optional field to that shape, it does not redesign it.
 - `nfr-security.md` / a future `22-security-reputation-hacking-authorization.md` — own the actual threat model and the existing `IMaliciousUrlChecker` design (Strategy/Adapter, per `design-guidelines.md` §8); this document only observes that an AI-based classifier is a drop-in alternative implementation of that same interface, not a replacement design.
 - `UrlShortner/global/guidelines/design-guidelines.md` — the layered architecture and Design Pattern Catalog (§8) this document maps every extension point onto. No new architectural primitive is introduced.
@@ -32,11 +32,11 @@ The specific requirement to design against: *URLs and their metadata should be o
 
 ### 2.1 Where the embedding would be generated: off the hot path, via the existing event pipeline
 
-The create (`fn-create.md`) and fetch (`fn-fetch.md`) flows are latency- and availability-critical (`nfr-performance.md`'s redirect budget; the entire premise of `03-elasticsearch-vs-sql-server.md` and `05-kafka-comaporison.md` is *don't make the hot path wait on anything that doesn't have to happen synchronously*). Embedding generation — a call to an embedding model, whatever form that eventually takes — is exactly the kind of variable-latency, non-critical-path work that must never sit inside `ShortUrlService.CreateAsync` or the redirect resolver.
+The create (`fn-create.md`) and fetch (`fn-fetch.md`) flows are latency- and availability-critical (`nfr-performance.md`'s redirect budget; the entire premise of `03-elasticsearch-vs-sql-server.md` and `05-kafka-comparison.md` is *don't make the hot path wait on anything that doesn't have to happen synchronously*). Embedding generation — a call to an embedding model, whatever form that eventually takes — is exactly the kind of variable-latency, non-critical-path work that must never sit inside `ShortUrlService.CreateAsync` or the redirect resolver.
 
-This is a direct, no-new-machinery application of the event-driven pipeline already justified in `05-kafka-comaporison.md`:
+This is a direct, no-new-machinery application of the event-driven pipeline already justified in `05-kafka-comparison.md`:
 
-- `fn-create.md`'s flow already ends by persisting a `ShortUrl` row; the v2 create path already publishes a `UrlCreated` event onto the broker (`05-kafka-comaporison.md` §1) for other independent consumers (safety re-check, cache warm).
+- `fn-create.md`'s flow already ends by persisting a `ShortUrl` row; the v2 create path already publishes a `UrlCreated` event onto the broker (`05-kafka-comparison.md` §1) for other independent consumers (safety re-check, cache warm).
 - A new, independent **AI-enrichment consumer** subscribes to `UrlCreated` (and, if metadata changes are ever supported, an equivalent update event) the same way the analytics-indexing consumer subscribes to `UrlClicked`. It calls an embedding model, then writes the resulting vector back onto the corresponding Elasticsearch document.
 - This consumer touches **nothing** in `Api`, `Application`, or the core `ShortUrl` write path. It is purely an additional subscriber on a stream that already exists for other reasons. If the embedding call is slow, times out, or the provider is down, nothing about create or fetch is affected — the same fire-and-forget, no-blocking-guarantee already established for click recording (`fn-analytics.md` §4) applies here by construction, not by new design work.
 
@@ -46,7 +46,7 @@ Elasticsearch is already the chosen store for the analytics/event data at this s
 
 - **Recommendation: use Elasticsearch's native `dense_vector` + k-NN support. Do not introduce a dedicated vector database (e.g., Pinecone, Weaviate, Milvus) at this system's scale.**
 - The justification for adding a *second* purpose-built store must clear the same bar `03-elasticsearch-vs-sql-server.md` §5 sets for adding Elasticsearch itself in the first place — a workload shape the existing store genuinely can't serve. A standalone vector database earns its keep at a scale/recall profile this system isn't near: billions of high-dimensional vectors, sub-10ms ANN query SLAs at very high QPS, or vector-specific tuning (product quantization, specialized index algorithms) beyond what Lucene's HNSW-based `dense_vector` implementation offers. Nothing in the use cases named in Section 1 — similarity search over a shortener's own link corpus, not a general-purpose embedding search product — approaches that.
-- Running a second, different data platform purely for vectors reintroduces the exact operational cost `03-elasticsearch-vs-sql-server.md` §5 already had to justify paying once (cluster ops, a new system the team must learn) — paying it *twice*, for two stores holding data about the same entities, is a cost this document is not prepared to justify speculatively. If the scale or recall requirements ever genuinely exceed what Elasticsearch's vector support offers, that would be a reason to revisit — stated as an explicit, named upgrade path (the same posture `05-kafka-comaporison.md` §4 takes toward Kafka), not a default.
+- Running a second, different data platform purely for vectors reintroduces the exact operational cost `03-elasticsearch-vs-sql-server.md` §5 already had to justify paying once (cluster ops, a new system the team must learn) — paying it *twice*, for two stores holding data about the same entities, is a cost this document is not prepared to justify speculatively. If the scale or recall requirements ever genuinely exceed what Elasticsearch's vector support offers, that would be a reason to revisit — stated as an explicit, named upgrade path (the same posture `05-kafka-comparison.md` §4 takes toward Kafka), not a default.
 
 ### 2.3 How this stays optional and additive
 
@@ -90,16 +90,16 @@ Consequences of this shape, stated explicitly:
 
 ## 3. Architectural Extension Points — Mapped to the Existing Pattern Catalog
 
-The point of this section is that **the same event-driven design chosen in `05-kafka-comaporison.md` for scaling reasons is also what makes AI extensibility cheap** — this is not a coincidence that needs new machinery to exploit, and every attachment point below maps onto a pattern `design-guidelines.md` §8 already lists.
+The point of this section is that **the same event-driven design chosen in `05-kafka-comparison.md` for scaling reasons is also what makes AI extensibility cheap** — this is not a coincidence that needs new machinery to exploit, and every attachment point below maps onto a pattern `design-guidelines.md` §8 already lists.
 
 ### 3.1 The broker pipeline as the primary attachment point (most important point in this document)
 
-`05-kafka-comaporison.md` establishes that create/fetch publish `UrlCreated`/`UrlClicked` events and that adding a new independent consumer is exactly the kind of change the broker exists to make cheap ("producers... should never block on, or fail because of, a downstream consumer" — §1). An AI-enrichment consumer is not a new architectural concept; it is the **third named consumer type** in a pipeline that was already going to have several:
+`05-kafka-comparison.md` establishes that create/fetch publish `UrlCreated`/`UrlClicked` events and that adding a new independent consumer is exactly the kind of change the broker exists to make cheap ("producers... should never block on, or fail because of, a downstream consumer" — §1). An AI-enrichment consumer is not a new architectural concept; it is the **third named consumer type** in a pipeline that was already going to have several:
 
 | Event | Existing/planned consumers | AI-enrichment consumer |
 |---|---|---|
-| `UrlCreated` | Async malicious-domain re-check, cache warm/seed (`05-kafka-comaporison.md` §1) | Generate and store `metadataEmbedding` (Section 2.1) |
-| `UrlClicked` | Analytics-indexing into Elasticsearch, cache-invalidation (`05-kafka-comaporison.md` §1) | (Illustrative, not designed here) feed click-pattern data to an anomaly-detection consumer |
+| `UrlCreated` | Async malicious-domain re-check, cache warm/seed (`05-kafka-comparison.md` §1) | Generate and store `metadataEmbedding` (Section 2.1) |
+| `UrlClicked` | Analytics-indexing into Elasticsearch, cache-invalidation (`05-kafka-comparison.md` §1) | (Illustrative, not designed here) feed click-pattern data to an anomaly-detection consumer |
 
 Because this consumer is *just another subscriber*, adopting it later requires zero changes to `ShortUrlService`, the `Api`/`Application` layers, or anything in `fn-create.md`/`fn-analytics.md`. This is the central claim of this document: **the scaling decision already made (decouple via broker) is the same decision that buys AI-readiness — there is no separate "make it AI-ready" architecture to design.**
 
@@ -131,7 +131,7 @@ public sealed class DenylistLinkSafetyChecker : ILinkSafetyChecker { /* ... */ }
 public sealed class AiClassifierLinkSafetyChecker : ILinkSafetyChecker { /* ... */ }
 ```
 
-Whether a future classifier runs synchronously (replacing the current check inline) or asynchronously (as a post-creation re-check publishing a "flagged" outcome, per `05-kafka-comaporison.md` §6's existing discussion of this exact idea) is a decision for whoever eventually builds it — both options fit the Strategy seam without touching the interface.
+Whether a future classifier runs synchronously (replacing the current check inline) or asynchronously (as a post-creation re-check publishing a "flagged" outcome, per `05-kafka-comparison.md` §6's existing discussion of this exact idea) is a decision for whoever eventually builds it — both options fit the Strategy seam without touching the interface.
 
 ### 3.3 Decorator pattern — an enrichment wrapper around the repository
 
@@ -180,8 +180,8 @@ Stated explicitly, per this project's convention of naming trade-offs and scope 
 - **This is not a design for any specific AI feature.** Similarity search, AI moderation, and analytics summarization (Section 1) are illustrative motivating examples, not specifications. None has request/response contracts, UI, or acceptance criteria defined here.
 - **This does not select an embedding model.** Dimension counts (`768` in Section 2.3) are illustrative placeholders showing the mapping shape, not a chosen model's actual output size.
 - **This does not commit to an AI vendor or API.** No OpenAI/Azure OpenAI/Anthropic/open-source-model decision is made or implied. Section 3.4's Adapter pattern exists precisely so that decision can be deferred without cost.
-- **This does not change any v1 or already-decided v2 behavior.** `fn-create.md`, `fn-analytics.md`, `03-elasticsearch-vs-sql-server.md`, and `05-kafka-comaporison.md` are unmodified by this document; it only observes that their existing shape has room for the extensions described above.
-- **This does not argue AI capability is needed.** No use case in Section 1 is asserted to be a real, scheduled requirement — the same "don't build against a speculative need" discipline `05-kafka-comaporison.md` §3 applies to Kafka's replay capability applies here to AI generally: readiness is being designed for; nothing is being built.
+- **This does not change any v1 or already-decided v2 behavior.** `fn-create.md`, `fn-analytics.md`, `03-elasticsearch-vs-sql-server.md`, and `05-kafka-comparison.md` are unmodified by this document; it only observes that their existing shape has room for the extensions described above.
+- **This does not argue AI capability is needed.** No use case in Section 1 is asserted to be a real, scheduled requirement — the same "don't build against a speculative need" discipline `05-kafka-comparison.md` §3 applies to Kafka's replay capability applies here to AI generally: readiness is being designed for; nothing is being built.
 
 ---
 
@@ -191,8 +191,8 @@ Stated explicitly, per this project's convention of naming trade-offs and scope 
 |---|---|---|
 | Similarity/semantic search over links | Elasticsearch `dense_vector` field + `knn` query (Section 2.2–2.3), populated by an AI-enrichment consumer (Section 2.1/3.1) | The vector field is additive/nullable on a store that already isn't the system of record for redirects (`03-elasticsearch-vs-sql-server.md` §7); a new k-NN query is a new read path, not a change to existing ones. |
 | A smarter (AI-based) moderation check | New `ILinkSafetyChecker` implementation (Section 3.2) | Same interface, selected via DI/config; `ShortUrlService` is unchanged (Open/Closed). |
-| Any enrichment triggered at creation or click time | New consumer on the existing `UrlCreated`/`UrlClicked` broker topics (Section 3.1) | Producers (create/fetch) already don't know or care who consumes their events (`05-kafka-comaporison.md` §1); adding a subscriber is a deploy of a new consumer process, not a change to the request path. |
+| Any enrichment triggered at creation or click time | New consumer on the existing `UrlCreated`/`UrlClicked` broker topics (Section 3.1) | Producers (create/fetch) already don't know or care who consumes their events (`05-kafka-comparison.md` §1); adding a subscriber is a deploy of a new consumer process, not a change to the request path. |
 | Analytics summarization/anomaly detection | Reads directly from the existing Elasticsearch click-event store (`03-elasticsearch-vs-sql-server.md`) | Read-only against data already being captured for AF-09/AF-10; no write-path change at all. |
 | Any third-party AI provider integration | `Infrastructure`-layer Adapter behind a `Domain`/`Application`-defined interface (Section 3.4) | Keeps vendor SDK types out of `Application`/`Domain`, consistent with the existing dependency-direction rule (`design-guidelines.md` §1). |
 
-The common thread across every row: the extension point already exists, for reasons unrelated to AI, because of decisions already made in `03-elasticsearch-vs-sql-server.md`, `05-kafka-comaporison.md`, and the pattern catalog in `design-guidelines.md` §8. Nothing in this document asks for a new architectural primitive.
+The common thread across every row: the extension point already exists, for reasons unrelated to AI, because of decisions already made in `03-elasticsearch-vs-sql-server.md`, `05-kafka-comparison.md`, and the pattern catalog in `design-guidelines.md` §8. Nothing in this document asks for a new architectural primitive.

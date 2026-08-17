@@ -2,7 +2,7 @@
 
 **Status:** v2 scalability exploration (not yet adopted into the shipped v1 design).
 **Scope:** the public, anonymous redirect endpoint only — `GET /{shortCode}` (AF-02). Does **not** cover the authenticated create/management API, which has a materially different traffic and security profile (see Section 2).
-**Companion documents:** `v1/design/fn-fetch.md` (redirect flow, the 301-vs-302 decision this document must reconcile with), `v1/design/nfr-performance.md` (v1 latency targets and in-process caching), `v2/design/considerations/05-kafka-comaporison.md` (create-path scaling — separate concern).
+**Companion documents:** `v1/design/fn-fetch.md` (redirect flow, the 301-vs-302 decision this document must reconcile with), `v1/design/nfr-performance.md` (v1 latency targets and in-process caching), `v2/design/considerations/05-kafka-comparison.md` (create-path scaling — separate concern).
 **Scale assumption driving this document:** 10M redirects/day today → 100M/day in 5 years, roughly 1,150 req/sec sustained average, materially higher at peak (viral link spikes are the realistic peak-shape for a URL shortener, not a flat diurnal curve). Redirects overwhelmingly dominate over creates (ANFR-05).
 
 ---

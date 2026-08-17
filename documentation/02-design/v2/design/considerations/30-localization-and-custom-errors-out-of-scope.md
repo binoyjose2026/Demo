@@ -2,13 +2,13 @@
 
 **Version:** v2 (scalability review)
 **Status:** Scope declaration — not a design document
-**Traceability:** `prompt@review-design.md` (review scope: Scalability)
+**Traceability:** `agent-prompt.md` (review scope: Scalability)
 
 ---
 
 ## 1. What Is Excluded, and Why
 
-`prompt@review-design.md` states its own scope explicitly: *"Scope of the review: Scalability."*
+`agent-prompt.md` states its own scope explicitly: *"Scope of the review: Scalability."*
 
 Two related but distinct feature areas are **explicitly out of scope for this v2 review**:
 
@@ -35,4 +35,4 @@ The API today returns fixed, English-only `ProblemDetails` error responses — t
 
 ## 4. Recommendation
 
-Treat localization and custom/configurable error messaging as their own separate, scoped review if and when they become an actual product requirement, rather than folding them into this scalability review, consistent with `prompt@review-design.md`'s own pattern of limiting each review pass to a bounded set of items.
+Treat localization and custom/configurable error messaging as their own separate, scoped review if and when they become an actual product requirement, rather than folding them into this scalability review, consistent with `agent-prompt.md`'s own pattern of limiting each review pass to a bounded set of items.

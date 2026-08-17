@@ -1,6 +1,6 @@
 # In Scope — v1 Requirement Decisions
 
-**Source:** `01-requirements/v0-received-as-is/app/requirement.app.functional.md` & `requirement.app.non-functional.md` (baseline), plus confirmed answers in `01-requirements/v1-requirements/agents/review@agent/review/02-answer.md`.
+**Source:** `01-requirements/v0-received-as-is/app/requirement.app.functional.md` & `requirement.app.non-functional.md` (baseline), plus confirmed answers in `01-requirements/v1-requirements/agents/review-agent/review/02-answer.md`.
 **Purpose:** Quick-reference summary of what is confirmed **in scope for v1**. Each item cites the requirement ID(s) and/or question number (Q#) it comes from. Companion to `../out-of-scope/01-summary.md`.
 
 ## Baseline (from requirement.app.functional.md / requirement.app.non-functional.md)

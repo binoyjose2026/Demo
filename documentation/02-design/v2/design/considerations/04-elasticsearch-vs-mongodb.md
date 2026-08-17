@@ -3,7 +3,7 @@
 **Version:** v2 (scalability exploration)
 **Status:** Draft
 **Scope:** Storage/serving engine for **click/analytics event data only** (`ShortUrlAccessEvent`). The core `ShortUrl` mapping table is explicitly out of scope for this document — per the companion v2 documents it stays relational (SQL Server), and is compared separately in `03-elasticsearch-vs-sql-server.md`.
-**Companion docs:** `fn-analytics.md` (v1 analytics design — what is captured, why event recording is fire-and-forget, why retention (Q27) was left open), `03-elasticsearch-vs-sql-server.md` (ES vs. the primary relational store), `05-kafka-comaporison.md` (how events get from the redirect path to the store)
+**Companion docs:** `fn-analytics.md` (v1 analytics design — what is captured, why event recording is fire-and-forget, why retention (Q27) was left open), `03-elasticsearch-vs-sql-server.md` (ES vs. the primary relational store), `05-kafka-comparison.md` (how events get from the redirect path to the store)
 
 ---
 

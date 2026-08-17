@@ -1,6 +1,6 @@
 # Retry Pattern for Extreme-Scale Dependencies
 
-**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/prompt@review-desig.md`.
+**Scope:** v2 scalability review — one of the numbered considerations produced against `documentation/02-design/v2/agents/agent-prompt.md`.
 **Builds on (does not replace):** `v1/design/nfr-resilience.md` Section 4 (the original Polly-based retry+timeout wrapper around the moderation-check call) and Section 2.3 (the documented v1 decision *not* to retry writes against the local SQLite file).
 **Traces to:** ANFR-04 (graceful degradation on backend failure), ANFR-05/ANFR-06 (low-latency, high-volume redirect throughput).
 **Sibling documents (by filename, not duplicated here):** `14-timeout.md` (per-attempt and overall timeout budgets — retries in this document consume, not define, those budgets), `16-exponential-backoff.md` (the delay math between attempts), `17-jitter.md` (randomizing that delay to avoid synchronized retry storms), `18-circuit-breaker.md` (what stops retries once a dependency is *known* to be down, rather than retrying attempt-by-attempt), `19-bulkhead.md` (isolating retry-consumed connections/threads per dependency so one dependency's retries can't starve another's), `11-idempotency-keys.md` (what makes retrying a create/write request safe in the first place — referenced in Section 3, not repeated here).
@@ -16,7 +16,7 @@ At v2 scale, the dependency graph is no longer "one embedded database plus one H
 - **Primary database** (per `03-elasticsearch-vs-sql-server.md` / `05-kafka-comaporios.md`'s surrounding architecture — a server-based RDBMS, not SQLite)
 - **Redis cache** (`07-redis-caching-and-invalidation.md`)
 - **Elasticsearch** (`03-elasticsearch-vs-sql-server.md`, `04-elasticsearch-vs-mongodb.md`)
-- **Message broker** (`05-kafka-comaporison.md`, `20-outbox-pattern.md`)
+- **Message broker** (`05-kafka-comparison.md`, `20-outbox-pattern.md`)
 - **External moderation-check HTTP call** (carried forward from v1)
 
 Every one of these is now reached over a network, from multiple horizontally-scaled instances, at 100M-fetches/day-class volume. This document defines *which* failures against *which* dependency are safe to retry, how many times, and how that decision composes with idempotency, timeout, backoff, jitter, circuit breaking, and bulkheads — each of which is that sibling document's job, not this one's.
@@ -103,7 +103,7 @@ Retry is not one policy — the cost, blast radius, and idempotency story differ
 | **Elasticsearch** | Read (search query) | Yes, up to the budget | Read-only, side-effect-free; same transient-node/shard-unavailable case as a DB read. |
 | **Elasticsearch** | Write (index a document) | Yes, if the write is naturally idempotent | Elasticsearch document writes keyed by a stable ID (e.g., short code) are upserts by nature — re-indexing the same document with the same ID is safe without a separate idempotency-key mechanism, unlike a relational `INSERT`. |
 | **Message broker** | Publish | Yes, only with idempotency guard or a broker-native dedup key | A duplicate publish fans out to every consumer downstream (indexing, analytics) — see `20-outbox-pattern.md` for how the outbox pattern already bounds this by making publish itself an at-least-once, consumer-deduplicated operation. Retry policy here should lean on that existing dedup, not invent a second one. |
-| **Message broker** | Consume/ack | Governed by the broker's own redelivery semantics, not this policy | Broker consumer retry (redelivery on failed ack) is a property of the consumer/broker configuration described in `05-kafka-comaporison.md`, not a Polly-style client retry; out of scope here to avoid duplicating that document. |
+| **Message broker** | Consume/ack | Governed by the broker's own redelivery semantics, not this policy | Broker consumer retry (redelivery on failed ack) is a property of the consumer/broker configuration described in `05-kafka-comparison.md`, not a Polly-style client retry; out of scope here to avoid duplicating that document. |
 | **External moderation-check HTTP call** | Query | Yes, small budget, transient conditions only (per `nfr-resilience.md` Section 4.2, unchanged) | Read-like and cheap to retry — but each retry costs a real external API call, which may be rate-limited or billed per-call by the provider. Unlike an internal DB/cache retry, cost here is a hard external constraint on top of the latency cost, which is why the v1 budget (2 retries) was already deliberately conservative and stays conservative at v2 scale rather than growing with traffic. |
 
 The recurring pattern: **reads default to "retry freely within the small budget"; writes default to "retry only when idempotent"; anything with an external cost per call (the moderation-check) or a duplication blast radius (the broker) gets the most conservative treatment of all.**
